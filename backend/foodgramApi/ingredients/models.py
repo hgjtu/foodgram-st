@@ -5,11 +5,12 @@ User = get_user_model()
 
 # Ингредиент
 class Ingredient(models.Model):
+    """Модель ингредиента"""
     GRAM = 'г'
     KILOGRAM = 'кг'
     LITER = 'л'
     MILLILITER = 'мл'
-    PIECE = 'шт'
+    PIECE = 'шт.'
     TEASPOON = 'ч.л.'
     TABLESPOON = 'ст.л.'
     PINCH = 'щеп.'
