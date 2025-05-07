@@ -3,9 +3,8 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+# Ингредиент
 class Ingredient(models.Model):
-    """Модель ингредиента"""
-    # Единицы измерения
     GRAM = 'г'
     KILOGRAM = 'кг'
     LITER = 'л'
