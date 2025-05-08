@@ -6,10 +6,9 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Sum
-from .models import Recipe, RecipeIngredient, Ingredient
+from .models import Recipe, RecipeIngredient
 from .serializers import (
-    RecipeListSerializer, RecipeCreateSerializer,
-    IngredientSerializer
+    RecipeListSerializer, RecipeCreateSerializer, ShortRecipeSerializer
 )
 import hashlib
 from reportlab.pdfgen import canvas
@@ -187,7 +186,7 @@ def shopping_cart(request, id):
                 status=status.HTTP_400_BAD_REQUEST
             )
         request.user.shopping_cart.add(recipe)
-        serializer = RecipeListSerializer(recipe, context={'request': request})
+        serializer = ShortRecipeSerializer(recipe, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     if not request.user.shopping_cart.filter(id=id).exists():
@@ -211,7 +210,7 @@ def favorites(request, id):
                 status=status.HTTP_400_BAD_REQUEST
             )
         request.user.favorites.add(recipe)
-        serializer = RecipeListSerializer(recipe, context={'request': request})
+        serializer = ShortRecipeSerializer(recipe, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     if not request.user.favorites.filter(id=id).exists():

@@ -164,7 +164,7 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
         return False
 
     def get_recipes(self, obj):
-        from recipes.serializers import RecipeListSerializer
+        from recipes.serializers import ShortRecipeSerializer
         request = self.context.get('request')
         recipes_limit = request.query_params.get('recipes_limit')
         if recipes_limit:
@@ -174,9 +174,9 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
                 recipes_limit = 3
         else:
             recipes_limit = 3
-            
+        
         recipes = Recipe.objects.filter(author=obj)[:recipes_limit]
-        return RecipeListSerializer(
+        return ShortRecipeSerializer(
             recipes,
             many=True,
             context={'request': request}

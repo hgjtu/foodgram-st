@@ -17,4 +17,4 @@ urlpatterns = [
     path('set_password/', user_set_password, name='user-set-password'),
     path('subscriptions/', subscriptions, name='user-subscriptions'),
     path('<int:id>/subscribe/', subscribe, name='user-subscribe'),  # POST and DELETE
-] 
+]
