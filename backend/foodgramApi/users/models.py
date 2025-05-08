@@ -39,7 +39,7 @@ class User(AbstractUser):
     )
     avatar = models.ImageField(
         'Аватар',
-        upload_to='users/avatars/',
+        upload_to='users/',
         blank=True,
         null=True,
         default='userpic-icon.jpg'
