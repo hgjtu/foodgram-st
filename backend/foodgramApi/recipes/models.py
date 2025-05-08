@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 
 from backend.foodgramApi.ingredients.models import Ingredient
 
@@ -11,28 +12,30 @@ class Recipe(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='recipes',
-        verbose_name='Автор рецепта'
+        verbose_name='Автор'
     )
     name = models.CharField(
-        'Название рецепта',
+        'Название',
         max_length=200
     )
     image = models.ImageField(
-        'Изображение блюда',
+        'Картинка',
         upload_to='recipes/images/'
     )
     text = models.TextField(
-        'Описание рецепта'
+        'Описание'
     )
     ingredients = models.ManyToManyField(
-        Ingredient,
+        'Ingredient',
         through='RecipeIngredient',
+        related_name='recipes',
         verbose_name='Ингредиенты'
     )
-    cooking_time = models.PositiveIntegerField(
-        'Время приготовления (минуты)'
+    cooking_time = models.PositiveSmallIntegerField(
+        'Время приготовления (в минутах)',
+        validators=[MinValueValidator(1)]
     )
-    pub_date = models.DateTimeField(
+    created = models.DateTimeField(
         'Дата публикации',
         auto_now_add=True
     )
@@ -40,7 +43,7 @@ class Recipe(models.Model):
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
-        ordering = ['-pub_date']
+        ordering = ['-created']
     
     def __str__(self):
         return self.name
@@ -51,22 +54,27 @@ class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='recipe_ingredients'
+        related_name='recipe_ingredients',
+        verbose_name='Рецепт'
     )
     ingredient = models.ForeignKey(
-        Ingredient,
+        'Ingredient',
         on_delete=models.CASCADE,
-        related_name='ingredient_recipes'
+        related_name='recipe_ingredients',
+        verbose_name='Ингредиент'
     )
-    amount = models.PositiveIntegerField(
-        'Количество'
+    amount = models.PositiveSmallIntegerField(
+        'Количество',
+        validators=[MinValueValidator(1)]
     )
     
     class Meta:
+        verbose_name = 'Ингредиент рецепта'
+        verbose_name_plural = 'Ингредиенты рецепта'
         constraints = [
             models.UniqueConstraint(
                 fields=['recipe', 'ingredient'],
-                name='unique_ingredient_in_recipe'
+                name='unique_recipe_ingredient'
             )
         ]
     

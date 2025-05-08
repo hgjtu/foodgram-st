@@ -10,7 +10,8 @@ from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     UserAvatarSerializer,
-    PasswordChangeSerializer
+    PasswordChangeSerializer,
+    UserWithRecipesSerializer
 )
 
 User = get_user_model()
@@ -79,4 +80,75 @@ def user_set_password(request):
     serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def subscriptions(request):
+    # Получаем пользователей, на которых подписан текущий пользователь
+    subscribed_users = User.objects.filter(followers=request.user)
+    
+    # Применяем пагинацию
+    paginator = CustomPagination()
+    result_page = paginator.paginate_queryset(subscribed_users, request)
+    
+    # Сериализуем данные
+    serializer = UserWithRecipesSerializer(
+        result_page,
+        many=True,
+        context={'request': request}
+    )
+    
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe(request, id):
+    # Получаем пользователя, на которого хотим подписаться
+    author = get_object_or_404(User, id=id)
+    
+    # Проверяем, не пытаемся ли подписаться на самого себя
+    if author == request.user:
+        return Response(
+            {"detail": "Нельзя подписаться на самого себя."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Проверяем, не подписаны ли уже
+    if author.followers.filter(id=request.user.id).exists():
+        return Response(
+            {"detail": "Вы уже подписаны на этого пользователя."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Создаем подписку
+    author.followers.add(request.user)
+    
+    # Возвращаем данные пользователя с рецептами
+    serializer = UserWithRecipesSerializer(
+        author,
+        context={'request': request}
+    )
+    
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def unsubscribe(request, id):
+    # Получаем пользователя, от которого хотим отписаться
+    author = get_object_or_404(User, id=id)
+    
+    # Проверяем, подписаны ли мы на этого пользователя
+    if not author.followers.filter(id=request.user.id).exists():
+        return Response(
+            {"detail": "Вы не были подписаны на этого пользователя."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Удаляем подписку
+    author.followers.remove(request.user)
+    
     return Response(status=status.HTTP_204_NO_CONTENT)

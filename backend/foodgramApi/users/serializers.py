@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 import base64
 from django.core.files.base import ContentFile
 from .models import User
+from recipes.serializers import RecipeListSerializer
+from recipes.models import Recipe
 
 User = get_user_model()
 
@@ -130,4 +132,36 @@ class UserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if obj.avatar:
             return request.build_absolute_uri(obj.avatar.url)
-        return None 
+        return None
+
+
+class UserWithRecipesSerializer(serializers.ModelSerializer):
+    is_subscribed = serializers.SerializerMethodField()
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'email', 'id', 'username', 'first_name', 'last_name',
+            'is_subscribed', 'recipes', 'recipes_count', 'avatar'
+        )
+
+    def get_is_subscribed(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.followers.filter(id=request.user.id).exists()
+        return False
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        recipes_limit = request.query_params.get('recipes_limit', 3)
+        recipes = Recipe.objects.filter(author=obj)[:int(recipes_limit)]
+        return RecipeListSerializer(
+            recipes,
+            many=True,
+            context={'request': request}
+        ).data
+
+    def get_recipes_count(self, obj):
+        return Recipe.objects.filter(author=obj).count() 
