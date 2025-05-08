@@ -11,10 +11,15 @@ from .serializers import (
     RecipeListSerializer, RecipeCreateSerializer, ShortRecipeSerializer
 )
 import hashlib
-from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 from django.http import HttpResponse
+import os
+from django.conf import settings
 
 User = get_user_model()
 
@@ -144,31 +149,47 @@ def download_shopping_cart(request):
 
     # Создаем PDF файл
     buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        encoding='utf-8'
+    )
+    
+    # Создаем стили с поддержкой кириллицы
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica',
+        fontSize=16,
+        spaceAfter=30,
+        encoding='utf-8'
+    )
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=12,
+        encoding='utf-8'
+    )
+
+    story = []
 
     # Заголовок
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, height - 50, "Список покупок")
-    
-    # Список ингредиентов
-    p.setFont("Helvetica", 12)
-    y = height - 100
-    for item in ingredients:
-        # Форматируем строку в соответствии с требуемым форматом
-        text = f"{item['ingredient__name']} ({item['ingredient__measurement_unit']}) — {item['total_amount']}"
-        p.drawString(50, y, text)
-        y -= 20
-        if y < 50:  # Если достигли конца страницы
-            p.showPage()
-            y = height - 50
-            p.setFont("Helvetica", 12)
+    story.append(Paragraph("Список покупок", title_style))
 
-    p.save()
+    # Список ингредиентов
+    for item in ingredients:
+        text = f"{item['ingredient__name']} ({item['ingredient__measurement_unit']}) — {item['total_amount']}"
+        story.append(Paragraph(text, normal_style))
+        story.append(Paragraph("<br/>", normal_style))
+
+    # Создаем PDF
+    doc.build(story)
     buffer.seek(0)
 
     # Создаем HTTP ответ с PDF файлом
-    response = HttpResponse(buffer, content_type='application/pdf')
+    response = HttpResponse(buffer, content_type='application/pdf; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="shopping_list.pdf"'
     
     return response
