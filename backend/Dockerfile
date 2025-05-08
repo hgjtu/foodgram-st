@@ -22,6 +22,18 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     postgresql-client \
     netcat-traditional \
+    pkg-config \
+    python3-dev \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    python3-cffi \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-dev \
+    libffi-dev \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -32,10 +44,6 @@ RUN pip install --no-cache-dir -r requirements.txt \
 # Copy project files
 COPY foodgramApi/ /app/
 COPY data/ /app/data/
-
-# Create static directory and copy font
-RUN mkdir -p /app/foodgramApi/static/fonts
-COPY foodgramApi/static/fonts/DejaVuSans.ttf /app/foodgramApi/static/fonts/
 
 # Create entrypoint script
 COPY entrypoint.sh /entrypoint.sh

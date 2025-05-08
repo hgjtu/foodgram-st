@@ -8,6 +8,9 @@ done
 echo "PostgreSQL started"
 
 # Run migrations
+python manage.py makemigrations
+
+# Run migrations
 python manage.py migrate
 
 # Load ingredients

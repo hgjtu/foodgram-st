@@ -5,21 +5,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from .models import Recipe, RecipeIngredient
 from .serializers import (
     RecipeListSerializer, RecipeCreateSerializer, ShortRecipeSerializer
 )
 import hashlib
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from io import BytesIO
+from django.template.loader import render_to_string
+from weasyprint import HTML
 from django.http import HttpResponse
-import os
-from django.conf import settings
+from django.template.loader import get_template
 
 User = get_user_model()
 
@@ -137,7 +132,6 @@ def recipe_get_link(request, id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_shopping_cart(request):
-    # Получаем все ингредиенты из рецептов в корзине пользователя
     ingredients = RecipeIngredient.objects.filter(
         recipe__in_shopping_carts=request.user
     ).values(
@@ -147,51 +141,11 @@ def download_shopping_cart(request):
         total_amount=Sum('amount')
     ).order_by('ingredient__name')
 
-    # Создаем PDF файл
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        encoding='utf-8'
-    )
-    
-    # Создаем стили с поддержкой кириллицы
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontName='Helvetica',
-        fontSize=16,
-        spaceAfter=30,
-        encoding='utf-8'
-    )
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=12,
-        encoding='utf-8'
-    )
+    html = render_to_string('shopping_list.html', {'ingredients': ingredients})
+    pdf_file = HTML(string=html, encoding='utf-8').write_pdf()
 
-    story = []
-
-    # Заголовок
-    story.append(Paragraph("Список покупок", title_style))
-
-    # Список ингредиентов
-    for item in ingredients:
-        text = f"{item['ingredient__name']} ({item['ingredient__measurement_unit']}) — {item['total_amount']}"
-        story.append(Paragraph(text, normal_style))
-        story.append(Paragraph("<br/>", normal_style))
-
-    # Создаем PDF
-    doc.build(story)
-    buffer.seek(0)
-
-    # Создаем HTTP ответ с PDF файлом
-    response = HttpResponse(buffer, content_type='application/pdf; charset=utf-8')
+    response = HttpResponse(pdf_file, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="shopping_list.pdf"'
-    
     return response
 
 

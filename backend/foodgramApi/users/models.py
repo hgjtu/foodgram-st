@@ -42,7 +42,7 @@ class User(AbstractUser):
         upload_to='users/avatars/',
         blank=True,
         null=True,
-        default='users/image.png'
+        default='userpic-icon.jpg'
     )
     shopping_cart = models.ManyToManyField(
         'recipes.Recipe',
