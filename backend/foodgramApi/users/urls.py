@@ -1,7 +1,6 @@
 from django.urls import path
 from .views import (
     user_list,
-    user_create,
     user_detail,
     user_me,
     user_avatar,
@@ -12,8 +11,7 @@ from .views import (
 )
 
 urlpatterns = [
-    path('', user_list, name='user-list'),
-    path('', user_create, name='user-create'),
+    path('', user_list, name='user-list'),  # GET and POST
     path('<int:id>/', user_detail, name='user-detail'),
     path('me/', user_me, name='user-me'),
     path('me/avatar/', user_avatar, name='user-avatar'),

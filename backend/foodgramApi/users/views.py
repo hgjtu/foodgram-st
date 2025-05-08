@@ -23,27 +23,22 @@ class CustomPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def user_list(request):
-    paginator = CustomPagination()
-    users = User.objects.all()
-    result_page = paginator.paginate_queryset(users, request)
-    serializer = UserSerializer(result_page, many=True, context={'request': request})
-    return paginator.get_paginated_response(serializer.data)
-
-
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
-def user_create(request):
-    serializer = UserCreateSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+def user_list(request):
+    if request.method == 'POST':
+        serializer = UserCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    users = User.objects.all()
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data)
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def user_detail(request, id):
     user = get_object_or_404(User, id=id)
     serializer = UserSerializer(user, context={'request': request})

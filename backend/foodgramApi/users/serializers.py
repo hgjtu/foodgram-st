@@ -93,6 +93,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id',)
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('Пользователь с таким email уже существует.')
+        return value
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError('Пользователь с таким username уже существует.')
+        return value
+
     def validate_password(self, value):
         try:
             validate_password(value)

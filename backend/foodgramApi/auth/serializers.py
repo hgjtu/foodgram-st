@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
 
 User = get_user_model()
 
@@ -10,24 +11,31 @@ class TokenSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
-    def validate(self, data):
-        email = data.get('email')
-        password = data.get('password')
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
 
-        if email and password:
-            try:
-                user = User.objects.get(email=email)
-                if not user.check_password(password):
-                    raise serializers.ValidationError('Неверный email или пароль')
-            except User.DoesNotExist:
-                raise serializers.ValidationError('Неверный email или пароль')
-        else:
-            raise serializers.ValidationError('Необходимо указать email и пароль')
+        if not email or not password:
+            raise serializers.ValidationError({
+                'non_field_errors': ['Необходимо указать email и пароль.']
+            })
 
-        return data
+        try:
+            user = User.objects.get(email=email)
+            if not user.check_password(password):
+                raise serializers.ValidationError({
+                    'non_field_errors': ['Неверный email или пароль.']
+                })
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'non_field_errors': ['Неверный email или пароль.']
+            })
 
-    def create(self, validated_data):
-        user = User.objects.get(email=validated_data['email'])
+        attrs['user'] = user
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.validated_data['user']
         token, _ = Token.objects.get_or_create(user=user)
         return {'auth_token': token.key}
 

@@ -26,9 +26,21 @@ class CustomPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def recipe_list(request):
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Учетные данные не были предоставлены."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        serializer = RecipeCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(author=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     queryset = Recipe.objects.all()
 
     # Фильтрация по автору
@@ -63,37 +75,30 @@ def recipe_list(request):
     return paginator.get_paginated_response(serializer.data)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def recipe_create(request):
-    serializer = RecipeCreateSerializer(
-        data=request.data,
-        context={'request': request}
-    )
-    serializer.is_valid(raise_exception=True)
-    recipe = serializer.save()
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-@api_view(['GET'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 @permission_classes([AllowAny])
 def recipe_detail(request, id):
     recipe = get_object_or_404(Recipe, id=id)
-    serializer = RecipeListSerializer(recipe, context={'request': request})
-    return Response(serializer.data)
-
-
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def recipe_update(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
     
-    # Проверяем, является ли пользователь автором рецепта
+    if request.method == 'GET':
+        serializer = RecipeListSerializer(recipe, context={'request': request})
+        return Response(serializer.data)
+    
+    if not request.user.is_authenticated:
+        return Response(
+            {"detail": "Учетные данные не были предоставлены."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    
     if recipe.author != request.user:
         return Response(
-            {"detail": "У вас недостаточно прав для выполнения данного действия."},
+            {"detail": "У вас нет прав на выполнение этого действия."},
             status=status.HTTP_403_FORBIDDEN
         )
+    
+    if request.method == 'DELETE':
+        recipe.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     serializer = RecipeCreateSerializer(
         recipe,
@@ -107,22 +112,6 @@ def recipe_update(request, id):
     # Возвращаем обновленный рецепт в формате RecipeListSerializer
     response_serializer = RecipeListSerializer(recipe, context={'request': request})
     return Response(response_serializer.data)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def recipe_delete(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-    
-    # Проверяем, является ли пользователь автором рецепта
-    if recipe.author != request.user:
-        return Response(
-            {"detail": "У вас недостаточно прав для выполнения данного действия."},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
-    recipe.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
@@ -186,87 +175,49 @@ def download_shopping_cart(request):
     return response
 
 
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
-def add_to_shopping_cart(request, id):
+def shopping_cart(request, id):
     recipe = get_object_or_404(Recipe, id=id)
     
-    # Проверяем, не добавлен ли уже рецепт в корзину
-    if recipe.in_shopping_carts.filter(id=request.user.id).exists():
-        return Response(
-            {"detail": "Рецепт уже добавлен в список покупок."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    if request.method == 'POST':
+        if request.user.shopping_cart.filter(id=id).exists():
+            return Response(
+                {"detail": "Рецепт уже в списке покупок."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        request.user.shopping_cart.add(recipe)
+        return Response(status=status.HTTP_201_CREATED)
     
-    # Добавляем рецепт в корзину
-    recipe.in_shopping_carts.add(request.user)
-    
-    # Возвращаем данные рецепта в требуемом формате
-    return Response({
-        "id": recipe.id,
-        "name": recipe.name,
-        "image": request.build_absolute_uri(recipe.image.url) if recipe.image else None,
-        "cooking_time": recipe.cooking_time
-    }, status=status.HTTP_201_CREATED)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def remove_from_shopping_cart(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-    
-    # Проверяем, есть ли рецепт в корзине
-    if not recipe.in_shopping_carts.filter(id=request.user.id).exists():
+    if not request.user.shopping_cart.filter(id=id).exists():
         return Response(
             {"detail": "Рецепт не был в списке покупок."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    # Удаляем рецепт из корзины
-    recipe.in_shopping_carts.remove(request.user)
-    
+    request.user.shopping_cart.remove(recipe)
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
-def add_to_favorites(request, id):
+def favorites(request, id):
     recipe = get_object_or_404(Recipe, id=id)
     
-    # Проверяем, не добавлен ли уже рецепт в избранное
-    if recipe.favorited_by.filter(id=request.user.id).exists():
-        return Response(
-            {"detail": "Рецепт уже добавлен в избранное."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    if request.method == 'POST':
+        if request.user.favorites.filter(id=id).exists():
+            return Response(
+                {"detail": "Рецепт уже в избранном."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        request.user.favorites.add(recipe)
+        return Response(status=status.HTTP_201_CREATED)
     
-    # Добавляем рецепт в избранное
-    recipe.favorited_by.add(request.user)
-    
-    # Возвращаем данные рецепта в требуемом формате
-    return Response({
-        "id": recipe.id,
-        "name": recipe.name,
-        "image": request.build_absolute_uri(recipe.image.url) if recipe.image else None,
-        "cooking_time": recipe.cooking_time
-    }, status=status.HTTP_201_CREATED)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def remove_from_favorites(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-    
-    # Проверяем, есть ли рецепт в избранном
-    if not recipe.favorited_by.filter(id=request.user.id).exists():
+    if not request.user.favorites.filter(id=id).exists():
         return Response(
             {"detail": "Рецепт не был в избранном."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    # Удаляем рецепт из избранного
-    recipe.favorited_by.remove(request.user)
-    
+    request.user.favorites.remove(recipe)
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -10,12 +10,15 @@ from .serializers import TokenSerializer
 @permission_classes([AllowAny])
 def token_login(request):
     serializer = TokenSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    return Response(serializer.save())
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response(serializer.save(), status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def token_logout(request):
+    if not request.user.is_authenticated:
+        return Response(status=status.HTTP_204_NO_CONTENT)
     Token.objects.filter(user=request.user).delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
