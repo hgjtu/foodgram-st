@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Sum
-from .models import Recipe, IngredientInRecipe, Ingredient
+from .models import Recipe, RecipeIngredient, Ingredient
 from .serializers import (
     RecipeListSerializer, RecipeCreateSerializer,
     IngredientSerializer
@@ -145,7 +145,7 @@ def recipe_get_link(request, id):
 @permission_classes([IsAuthenticated])
 def download_shopping_cart(request):
     # Получаем все ингредиенты из рецептов в корзине пользователя
-    ingredients = IngredientInRecipe.objects.filter(
+    ingredients = RecipeIngredient.objects.filter(
         recipe__in_shopping_carts=request.user
     ).values(
         'ingredient__name',

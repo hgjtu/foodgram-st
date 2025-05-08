@@ -45,13 +45,13 @@ class User(AbstractUser):
         default='users/image.png'
     )
     shopping_cart = models.ManyToManyField(
-        'Recipe',
+        'recipes.Recipe',
         related_name='in_shopping_carts',
         verbose_name='Список покупок',
         blank=True
     )
     favorites = models.ManyToManyField(
-        'Recipe',
+        'recipes.Recipe',
         related_name='favorited_by',
         verbose_name='Избранное',
         blank=True

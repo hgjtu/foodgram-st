@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Recipe, RecipeIngredient, Ingredient
-from ingredients.serializers import IngredientSerializer
 from users.serializers import UserSerializer
 import base64
 from django.core.files.base import ContentFile

@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 import base64
 from django.core.files.base import ContentFile
 from .models import User
-from recipes.serializers import RecipeListSerializer
 from recipes.models import Recipe
 
 User = get_user_model()
@@ -154,6 +153,7 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
         return False
 
     def get_recipes(self, obj):
+        from recipes.serializers import RecipeListSerializer
         request = self.context.get('request')
         recipes_limit = request.query_params.get('recipes_limit', 3)
         recipes = Recipe.objects.filter(author=obj)[:int(recipes_limit)]

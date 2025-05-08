@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 
-from backend.foodgramApi.ingredients.models import Ingredient
+from ingredients.models import Ingredient
 
 User = get_user_model()
 
@@ -26,7 +26,7 @@ class Recipe(models.Model):
         'Описание'
     )
     ingredients = models.ManyToManyField(
-        'Ingredient',
+        Ingredient,
         through='RecipeIngredient',
         related_name='recipes',
         verbose_name='Ингредиенты'
@@ -58,7 +58,7 @@ class RecipeIngredient(models.Model):
         verbose_name='Рецепт'
     )
     ingredient = models.ForeignKey(
-        'Ingredient',
+        'ingredients.Ingredient',
         on_delete=models.CASCADE,
         related_name='recipe_ingredients',
         verbose_name='Ингредиент'
@@ -81,5 +81,5 @@ class RecipeIngredient(models.Model):
     def __str__(self):
         return (
             f'{self.ingredient.name} - {self.amount} '
-            f'{self.ingredient.get_measurement_unit_display()}'
+            f'{self.ingredient.measurement_unit}'
         )
