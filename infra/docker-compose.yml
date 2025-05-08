@@ -37,7 +37,9 @@ services:
       db:
         condition: service_healthy
     command: >
-      sh -c "python manage.py migrate && python manage.py load_ingredients /app/data/ingredients.json"
+      sh -c "python manage.py migrate && 
+             python manage.py collectstatic --noinput --clear && 
+             python manage.py load_ingredients /app/data/ingredients.json"
     restart: always
 
   frontend:
