@@ -35,10 +35,10 @@ def recipe_list(request):
                 {"detail": "Учетные данные не были предоставлены."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        serializer = RecipeCreateSerializer(data=request.data)
+        serializer = RecipeCreateSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(author=request.user)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     queryset = Recipe.objects.all()

@@ -57,7 +57,7 @@ class IngredientInRecipeSerializer(serializers.Serializer):
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
-    ingredients = IngredientInRecipeSerializer(many=True)
+    ingredients = IngredientInRecipeSerializer(many=True, required=True)
     image = serializers.CharField(required=True)
 
     class Meta:
@@ -69,6 +69,24 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             'text',
             'cooking_time'
         )
+
+    def validate_ingredients(self, value):
+        if not value:
+            raise serializers.ValidationError('Ingredients list cannot be empty')
+        
+        # Check if all ingredient IDs exist
+        ingredient_ids = [item['id'] for item in value]
+        existing_ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
+        if len(existing_ingredients) != len(ingredient_ids):
+            raise serializers.ValidationError('One or more ingredients do not exist')
+        
+        return value
+
+    def validate(self, data):
+        # Ensure ingredients are provided during update
+        if self.instance and 'ingredients' not in data:
+            raise serializers.ValidationError({'ingredients': 'This field is required'})
+        return data
 
     def validate_image(self, value):
         try:
@@ -117,6 +135,36 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             )
 
         return recipe
+
+    def update(self, instance, validated_data):
+        # Handle ingredients if provided
+        if 'ingredients' in validated_data:
+            ingredients_data = validated_data.pop('ingredients')
+            # Delete existing ingredients
+            instance.recipe_ingredients.all().delete()
+            # Create new ingredients
+            for ingredient_data in ingredients_data:
+                RecipeIngredient.objects.update_or_create(
+                    recipe=instance,
+                    ingredient_id=ingredient_data['id'],
+                    defaults={'amount': ingredient_data['amount']}
+                )
+
+        # Handle image if provided
+        if 'image' in validated_data:
+            image_data = validated_data.pop('image')
+            format, imgstr = image_data.split(';base64,')
+            ext = format.split('/')[-1]
+            filename = f'recipe_{instance.id}.{ext}'
+            data = ContentFile(base64.b64decode(imgstr), name=filename)
+            instance.image.save(filename, data, save=True)
+
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
     def to_representation(self, instance):
         return RecipeListSerializer(instance, context=self.context).data
