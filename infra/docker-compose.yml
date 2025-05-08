@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   db:
-    image: postgres:13
+    image: postgres:14
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
@@ -23,6 +23,7 @@ services:
       - ../backend/foodgramApi:/app
       - static_volume:/app/static
       - media_volume:/app/media
+      - ../data:/app/data
     expose:
       - 8000
     environment:
@@ -35,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate && python manage.py load_ingredients /app/data/ingredients.json"
     restart: always
 
   frontend:
