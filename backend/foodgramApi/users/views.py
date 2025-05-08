@@ -32,9 +32,12 @@ def user_list(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
     users = User.objects.all()
-    serializer = UserSerializer(users, many=True)
-    return Response(serializer.data)
+    paginator = CustomPagination()
+    result_page = paginator.paginate_queryset(users, request)
+    serializer = UserSerializer(result_page, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(['GET'])
@@ -59,7 +62,7 @@ def user_avatar(request):
         if request.user.avatar:
             if request.user.avatar.name != 'users/image.png':
                 default_storage.delete(request.user.avatar.path)
-            request.user.avatar = 'users/image.png'
+            request.user.avatar = None
             request.user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
