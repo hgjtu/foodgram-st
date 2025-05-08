@@ -101,52 +101,46 @@ def subscriptions(request):
     return paginator.get_paginated_response(serializer.data)
 
 
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def subscribe(request, id):
     # Получаем пользователя, на которого хотим подписаться
     author = get_object_or_404(User, id=id)
     
-    # Проверяем, не пытаемся ли подписаться на самого себя
-    if author == request.user:
-        return Response(
-            {"detail": "Нельзя подписаться на самого себя."},
-            status=status.HTTP_400_BAD_REQUEST
+    if request.method == 'POST':
+        # Проверяем, не пытаемся ли подписаться на самого себя
+        if author == request.user:
+            return Response(
+                {"detail": "Нельзя подписаться на самого себя."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверяем, не подписаны ли уже
+        if author.subscribers.filter(id=request.user.id).exists():
+            return Response(
+                {"detail": "Вы уже подписаны на этого пользователя."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Создаем подписку
+        author.subscribers.add(request.user)
+        
+        # Возвращаем данные пользователя с рецептами
+        serializer = UserWithRecipesSerializer(
+            author,
+            context={'request': request}
         )
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    # Проверяем, не подписаны ли уже
-    if author.subscribers.filter(id=request.user.id).exists():
-        return Response(
-            {"detail": "Вы уже подписаны на этого пользователя."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Создаем подписку
-    author.subscribers.add(request.user)
-    
-    # Возвращаем данные пользователя с рецептами
-    serializer = UserWithRecipesSerializer(
-        author,
-        context={'request': request}
-    )
-    
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def unsubscribe(request, id):
-    # Получаем пользователя, от которого хотим отписаться
-    author = get_object_or_404(User, id=id)
-    
-    # Проверяем, подписаны ли мы на этого пользователя
-    if not author.subscribers.filter(id=request.user.id).exists():
-        return Response(
-            {"detail": "Вы не были подписаны на этого пользователя."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Удаляем подписку
-    author.subscribers.remove(request.user)
-    
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    elif request.method == 'DELETE':
+        # Проверяем, подписаны ли мы на этого пользователя
+        if not author.subscribers.filter(id=request.user.id).exists():
+            return Response(
+                {"detail": "Вы не были подписаны на этого пользователя."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Удаляем подписку
+        author.subscribers.remove(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
