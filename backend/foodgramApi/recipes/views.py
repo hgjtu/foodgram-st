@@ -221,32 +221,33 @@ def favorites(request, id):
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def ingredient_list(request):
-    # Получаем параметр поиска
-    name = request.query_params.get('name', '')
+# @api_view(['GET'])
+# @permission_classes([AllowAny])
+# def ingredient_list(request):
+#     # Получаем параметр поиска
+#     name = request.query_params.get('name', '')
     
-    # Базовый queryset
-    queryset = Ingredient.objects.all()
+#     # Базовый queryset
+#     queryset = Ingredient.objects.all()
     
-    # Если есть параметр поиска, фильтруем по нему
-    if name:
-        queryset = queryset.filter(name__istartswith=name)
+#     # Если есть параметр поиска, фильтруем по нему
+#     if name:
+#         queryset = queryset.filter(name__istartswith=name)
     
-    # Сериализуем данные
-    serializer = IngredientSerializer(queryset, many=True)
+#     # Сериализуем данные
+#     serializer = IngredientSerializer(queryset, many=True)
     
-    return Response(serializer.data)
+#     return Response(serializer.data)
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def ingredient_detail(request, id):
-    # Получаем ингредиент по id
-    ingredient = get_object_or_404(Ingredient, id=id)
+# @api_view(['GET'])
+# @permission_classes([AllowAny])
+# def ingredient_detail(request, id):
+#     # Получаем ингредиент по id
+#     ingredient = get_object_or_404(Ingredient, id=id)
     
-    # Сериализуем данные
-    serializer = IngredientSerializer(ingredient)
+#     # Сериализуем данные
+#     serializer = IngredientSerializer(ingredient)
     
-    return Response(serializer.data)
+#     return Response(serializer.data)
+
