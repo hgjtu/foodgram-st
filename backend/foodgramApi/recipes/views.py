@@ -187,7 +187,8 @@ def shopping_cart(request, id):
                 status=status.HTTP_400_BAD_REQUEST
             )
         request.user.shopping_cart.add(recipe)
-        return Response(status=status.HTTP_201_CREATED)
+        serializer = RecipeListSerializer(recipe, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     if not request.user.shopping_cart.filter(id=id).exists():
         return Response(
@@ -210,7 +211,8 @@ def favorites(request, id):
                 status=status.HTTP_400_BAD_REQUEST
             )
         request.user.favorites.add(recipe)
-        return Response(status=status.HTTP_201_CREATED)
+        serializer = RecipeListSerializer(recipe, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     if not request.user.favorites.filter(id=id).exists():
         return Response(

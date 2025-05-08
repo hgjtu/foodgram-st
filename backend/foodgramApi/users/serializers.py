@@ -148,6 +148,7 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -159,14 +160,22 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return obj.followers.filter(id=request.user.id).exists()
+            return obj.subscribers.filter(id=request.user.id).exists()
         return False
 
     def get_recipes(self, obj):
         from recipes.serializers import RecipeListSerializer
         request = self.context.get('request')
-        recipes_limit = request.query_params.get('recipes_limit', 3)
-        recipes = Recipe.objects.filter(author=obj)[:int(recipes_limit)]
+        recipes_limit = request.query_params.get('recipes_limit')
+        if recipes_limit:
+            try:
+                recipes_limit = int(recipes_limit)
+            except (TypeError, ValueError):
+                recipes_limit = 3
+        else:
+            recipes_limit = 3
+            
+        recipes = Recipe.objects.filter(author=obj)[:recipes_limit]
         return RecipeListSerializer(
             recipes,
             many=True,
@@ -174,4 +183,10 @@ class UserWithRecipesSerializer(serializers.ModelSerializer):
         ).data
 
     def get_recipes_count(self, obj):
-        return Recipe.objects.filter(author=obj).count() 
+        return Recipe.objects.filter(author=obj).count()
+        
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar and hasattr(obj.avatar, 'url'):
+            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return None 

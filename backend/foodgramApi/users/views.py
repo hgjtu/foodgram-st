@@ -85,7 +85,7 @@ def user_set_password(request):
 @permission_classes([IsAuthenticated])
 def subscriptions(request):
     # Получаем пользователей, на которых подписан текущий пользователь
-    subscribed_users = User.objects.filter(followers=request.user)
+    subscribed_users = User.objects.filter(subscribers=request.user)
     
     # Применяем пагинацию
     paginator = CustomPagination()
@@ -115,14 +115,14 @@ def subscribe(request, id):
         )
     
     # Проверяем, не подписаны ли уже
-    if author.followers.filter(id=request.user.id).exists():
+    if author.subscribers.filter(id=request.user.id).exists():
         return Response(
             {"detail": "Вы уже подписаны на этого пользователя."},
             status=status.HTTP_400_BAD_REQUEST
         )
     
     # Создаем подписку
-    author.followers.add(request.user)
+    author.subscribers.add(request.user)
     
     # Возвращаем данные пользователя с рецептами
     serializer = UserWithRecipesSerializer(
@@ -140,13 +140,13 @@ def unsubscribe(request, id):
     author = get_object_or_404(User, id=id)
     
     # Проверяем, подписаны ли мы на этого пользователя
-    if not author.followers.filter(id=request.user.id).exists():
+    if not author.subscribers.filter(id=request.user.id).exists():
         return Response(
             {"detail": "Вы не были подписаны на этого пользователя."},
             status=status.HTTP_400_BAD_REQUEST
         )
     
     # Удаляем подписку
-    author.followers.remove(request.user)
+    author.subscribers.remove(request.user)
     
     return Response(status=status.HTTP_204_NO_CONTENT)
