@@ -5,6 +5,7 @@ services:
     image: hgjtu/foodgram-db:latest
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+      - ./backups/backup.sql:/docker-entrypoint-initdb.d/backup.sql
       # - ./backups:/backups
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -24,6 +25,8 @@ services:
       - static_volume:/app/static
       - media_volume:/app/media
       - ./data:/app/data
+      - ./backups:/app/backups
+      - ./media_ex:/app/media_ex
     expose:
       - 8000
     environment:
@@ -36,19 +39,9 @@ services:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-      - DJANGO_SECURE_SSL_REDIRECT=${DJANGO_SECURE_SSL_REDIRECT}
-      - DJANGO_SESSION_COOKIE_SECURE=${DJANGO_SESSION_COOKIE_SECURE}
-      - DJANGO_CSRF_COOKIE_SECURE=${DJANGO_CSRF_COOKIE_SECURE}
-      - DJANGO_SECURE_HSTS_SECONDS=${DJANGO_SECURE_HSTS_SECONDS}
-      - DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS}
-      - DJANGO_SECURE_HSTS_PRELOAD=${DJANGO_SECURE_HSTS_PRELOAD}
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      sh -c "python manage.py migrate && 
-             python manage.py collectstatic --noinput --clear && 
-             python manage.py load_ingredients /app/data/ingredients.json"
     restart: always
 
   frontend:

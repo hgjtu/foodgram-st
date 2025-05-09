@@ -26,6 +26,8 @@ Foodgram - это сервис для публикации рецептов. П�
 docker-compose -f docker-compose.prod.yml up --build
 ```
 
+docker exec foodgram-st-backend-1 cp -r /app/media_ex/. /app/media/
+
 Для создания бэкапа
 ```bash
 docker exec foodgram-st-db-1 pg_dump -U postgres foodgram > backups/backup.sql
