@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,177 +8,181 @@ from django.contrib.auth import get_user_model
 from django.db.models import Sum
 from .models import Recipe, RecipeIngredient
 from .serializers import (
-    RecipeListSerializer, RecipeCreateSerializer, ShortRecipeSerializer
+    RecipeListSerializer,
+    RecipeCreateSerializer,
+    ShortRecipeSerializer,
 )
 import hashlib
 from django.template.loader import render_to_string
 from weasyprint import HTML
 from django.http import HttpResponse
-from django.template.loader import get_template
 
 User = get_user_model()
 
 
 class CustomPagination(PageNumberPagination):
     page_size = 10
-    page_size_query_param = 'limit'
+    page_size_query_param = "limit"
     max_page_size = 100
 
 
-@api_view(['GET', 'POST'])
+@api_view(["GET", "POST"])
 @permission_classes([AllowAny])
 def recipe_list(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         if not request.user.is_authenticated:
             return Response(
                 {"detail": "Учетные данные не были предоставлены."},
-                status=status.HTTP_401_UNAUTHORIZED
+                status=status.HTTP_401_UNAUTHORIZED,
             )
-        serializer = RecipeCreateSerializer(data=request.data, context={'request': request})
+        serializer = RecipeCreateSerializer(
+            data=request.data, context={"request": request}
+        )
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors,
+                            status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     queryset = Recipe.objects.all()
 
-    author_id = request.query_params.get('author')
+    author_id = request.query_params.get("author")
     if author_id:
         queryset = queryset.filter(author_id=author_id)
 
-    is_favorited = request.query_params.get('is_favorited')
+    is_favorited = request.query_params.get("is_favorited")
     if is_favorited and request.user.is_authenticated:
-        if is_favorited == '1':
+        if is_favorited == "1":
             queryset = queryset.filter(favorited_by=request.user)
-        elif is_favorited == '0':
+        elif is_favorited == "0":
             queryset = queryset.exclude(favorited_by=request.user)
 
-    is_in_shopping_cart = request.query_params.get('is_in_shopping_cart')
+    is_in_shopping_cart = request.query_params.get("is_in_shopping_cart")
     if is_in_shopping_cart and request.user.is_authenticated:
-        if is_in_shopping_cart == '1':
+        if is_in_shopping_cart == "1":
             queryset = queryset.filter(in_shopping_carts=request.user)
-        elif is_in_shopping_cart == '0':
+        elif is_in_shopping_cart == "0":
             queryset = queryset.exclude(in_shopping_carts=request.user)
 
     paginator = CustomPagination()
     result_page = paginator.paginate_queryset(queryset, request)
     serializer = RecipeListSerializer(
-        result_page,
-        many=True,
-        context={'request': request}
+        result_page, many=True, context={"request": request}
     )
     return paginator.get_paginated_response(serializer.data)
 
 
-@api_view(['GET', 'PATCH', 'DELETE'])
+@api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([AllowAny])
 def recipe_detail(request, id):
     recipe = get_object_or_404(Recipe, id=id)
-    
-    if request.method == 'GET':
-        serializer = RecipeListSerializer(recipe, context={'request': request})
+
+    if request.method == "GET":
+        serializer = RecipeListSerializer(recipe, context={"request": request})
         return Response(serializer.data)
-    
+
     if not request.user.is_authenticated:
         return Response(
             {"detail": "Учетные данные не были предоставлены."},
-            status=status.HTTP_401_UNAUTHORIZED
+            status=status.HTTP_401_UNAUTHORIZED,
         )
-    
+
     if recipe.author != request.user:
         return Response(
             {"detail": "У вас нет прав на выполнение этого действия."},
-            status=status.HTTP_403_FORBIDDEN
+            status=status.HTTP_403_FORBIDDEN,
         )
-    
-    if request.method == 'DELETE':
+
+    if request.method == "DELETE":
         recipe.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
     serializer = RecipeCreateSerializer(
-        recipe,
-        data=request.data,
-        partial=True,
-        context={'request': request}
+        recipe, data=request.data,
+        partial=True, context={"request": request}
     )
     serializer.is_valid(raise_exception=True)
     serializer.save()
 
-    response_serializer = RecipeListSerializer(recipe, context={'request': request})
+    response_serializer = RecipeListSerializer(
+        recipe, context={"request": request})
     return Response(response_serializer.data)
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def recipe_get_link(request, id):
     recipe = get_object_or_404(Recipe, id=id)
-    origin = request.build_absolute_uri('/').rstrip('/')
+    origin = request.build_absolute_uri("/").rstrip("/")
     hash_object = hashlib.md5(str(recipe.id).encode())
     short_hash = hash_object.hexdigest()[:3]
     short_link = f"{origin}/s/{short_hash}"
-    
+
     return Response({"short-link": short_link})
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def download_shopping_cart(request):
-    ingredients = RecipeIngredient.objects.filter(
-        recipe__in_shopping_carts=request.user
-    ).values(
-        'ingredient__name',
-        'ingredient__measurement_unit'
-    ).annotate(
-        total_amount=Sum('amount')
-    ).order_by('ingredient__name')
+    ingredients = (
+        RecipeIngredient.objects.filter(recipe__in_shopping_carts=request.user)
+        .values("ingredient__name", "ingredient__measurement_unit")
+        .annotate(total_amount=Sum("amount"))
+        .order_by("ingredient__name")
+    )
 
-    html = render_to_string('shopping_list.html', {'ingredients': ingredients})
-    pdf_file = HTML(string=html, encoding='utf-8').write_pdf()
+    html = render_to_string("shopping_list.html", {"ingredients": ingredients})
+    pdf_file = HTML(string=html, encoding="utf-8").write_pdf()
 
-    response = HttpResponse(pdf_file, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="shopping_list.pdf"'
+    response = HttpResponse(pdf_file, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        'attachment;\
+        filename="shopping_list.pdf"'
+    )
     return response
 
 
-@api_view(['POST', 'DELETE'])
+@api_view(["POST", "DELETE"])
 @permission_classes([IsAuthenticated])
 def shopping_cart(request, id):
     recipe = get_object_or_404(Recipe, id=id)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         if request.user.shopping_cart.filter(id=id).exists():
             return Response(
                 {"detail": "Рецепт уже в списке покупок."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
         request.user.shopping_cart.add(recipe)
-        serializer = ShortRecipeSerializer(recipe, context={'request': request})
+        serializer = ShortRecipeSerializer(recipe,
+                                           context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     if not request.user.shopping_cart.filter(id=id).exists():
         return Response(
             {"detail": "Рецепт не был в списке покупок."},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
     request.user.shopping_cart.remove(recipe)
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['POST', 'DELETE'])
+@api_view(["POST", "DELETE"])
 @permission_classes([IsAuthenticated])
 def favorites(request, id):
     recipe = get_object_or_404(Recipe, id=id)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         if request.user.favorites.filter(id=id).exists():
             return Response(
                 {"detail": "Рецепт уже в избранном."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
         request.user.favorites.add(recipe)
-        serializer = ShortRecipeSerializer(recipe, context={'request': request})
+        serializer = ShortRecipeSerializer(recipe,
+                                           context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     if not request.user.favorites.filter(id=id).exists():
         return Response(
             {"detail": "Рецепт не был в избранном."},

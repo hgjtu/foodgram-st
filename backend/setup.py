@@ -10,4 +10,4 @@ setup(
         "psycopg2-binary>=2.9.0",
         "Pillow>=8.0.0",
     ],
-) 
+)

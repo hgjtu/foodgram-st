@@ -1,12 +1,12 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from .serializers import TokenSerializer
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def token_login(request):
     serializer = TokenSerializer(data=request.data)
@@ -15,7 +15,7 @@ def token_login(request):
     return Response(serializer.save(), status=status.HTTP_200_OK)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def token_logout(request):
     if not request.user.is_authenticated:

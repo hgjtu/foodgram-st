@@ -1,1 +1,1 @@
-default_app_config = 'ingredients.apps.IngredientsConfig'
+default_app_config = "ingredients.apps.IngredientsConfig"

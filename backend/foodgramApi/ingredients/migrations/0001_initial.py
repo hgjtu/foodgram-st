@@ -7,21 +7,50 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Ingredient',
+            name="Ingredient",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200, unique=True, verbose_name='Название ингредиента')),
-                ('measurement_unit', models.CharField(choices=[('г', 'грамм'), ('кг', 'килограмм'), ('л', 'литр'), ('мл', 'миллилитр'), ('шт.', 'штука'), ('ч.л.', 'чайная ложка'), ('ст.л.', 'столовая ложка'), ('щеп.', 'щепотка')], default='г', max_length=10, verbose_name='Единица измерения')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=200, unique=True, verbose_name="Название ингредиента"
+                    ),
+                ),
+                (
+                    "measurement_unit",
+                    models.CharField(
+                        choices=[
+                            ("г", "грамм"),
+                            ("кг", "килограмм"),
+                            ("л", "литр"),
+                            ("мл", "миллилитр"),
+                            ("шт.", "штука"),
+                            ("ч.л.", "чайная ложка"),
+                            ("ст.л.", "столовая ложка"),
+                            ("щеп.", "щепотка"),
+                        ],
+                        default="г",
+                        max_length=10,
+                        verbose_name="Единица измерения",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Ингредиент',
-                'verbose_name_plural': 'Ингредиенты',
-                'ordering': ['name'],
+                "verbose_name": "Ингредиент",
+                "verbose_name_plural": "Ингредиенты",
+                "ordering": ["name"],
             },
         ),
     ]

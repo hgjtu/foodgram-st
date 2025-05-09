@@ -548,6 +548,7 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 --
 
 COPY public.authtoken_token (key, created, user_id) FROM stdin;
+a0e450a21e7838aa4c669a3e5915fc911f92f44e	2025-05-09 16:32:36.087972+00	3
 \.
 
 
@@ -2910,9 +2911,10 @@ COPY public.users_user_groups (id, user_id, group_id) FROM stdin;
 
 COPY public.users_user_shopping_cart (id, user_id, recipe_id) FROM stdin;
 1	2	1
-2	3	3
 3	1	1
 4	1	3
+6	3	5
+7	3	3
 \.
 
 
@@ -3022,7 +3024,7 @@ SELECT pg_catalog.setval('public.users_user_id_seq', 3, true);
 -- Name: users_user_shopping_cart_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_user_shopping_cart_id_seq', 4, true);
+SELECT pg_catalog.setval('public.users_user_shopping_cart_id_seq', 7, true);
 
 
 --
