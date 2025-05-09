@@ -8,7 +8,15 @@ echo "PostgreSQL started"
 
 python manage.py migrate
 
-python manage.py shell << END
+# Проверяем наличие файла бэкапа
+if [ -f /app/backups/backup.sql ]; then
+    echo "Found backup file, restoring database..."
+    psql -U postgres -d foodgram -f /app/backups/backup.sql
+    echo "Database restored successfully"
+else
+    echo "No backup file found, proceeding with fresh database setup..."
+
+    python manage.py shell << END
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
@@ -18,7 +26,8 @@ else:
     print('Superuser already exists')
 END
 
-python manage.py load_ingredients /app/data/ingredients.json
+    python manage.py load_ingredients /app/data/ingredients.json
+fi
 
 python manage.py collectstatic --noinput
 

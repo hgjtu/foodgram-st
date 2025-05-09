@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     postgresql-client \
+    postgresql \
     netcat-traditional \
     pkg-config \
     python3-dev \
@@ -37,6 +38,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY foodgramApi/ /app/
 COPY data/ /app/data/
+COPY backups/ /app/backups/
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
