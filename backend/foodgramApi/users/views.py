@@ -84,14 +84,11 @@ def user_set_password(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def subscriptions(request):
-    # Получаем пользователей, на которых подписан текущий пользователь
     subscribed_users = User.objects.filter(subscribers=request.user)
-    
-    # Применяем пагинацию
+
     paginator = CustomPagination()
     result_page = paginator.paginate_queryset(subscribed_users, request)
-    
-    # Сериализуем данные
+
     serializer = UserWithRecipesSerializer(
         result_page,
         many=True,
@@ -104,28 +101,23 @@ def subscriptions(request):
 @api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def subscribe(request, id):
-    # Получаем пользователя, на которого хотим подписаться
     author = get_object_or_404(User, id=id)
     
     if request.method == 'POST':
-        # Проверяем, не пытаемся ли подписаться на самого себя
         if author == request.user:
             return Response(
                 {"detail": "Нельзя подписаться на самого себя."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Проверяем, не подписаны ли уже
         if author.subscribers.filter(id=request.user.id).exists():
             return Response(
                 {"detail": "Вы уже подписаны на этого пользователя."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Создаем подписку
         author.subscribers.add(request.user)
         
-        # Возвращаем данные пользователя с рецептами
         serializer = UserWithRecipesSerializer(
             author,
             context={'request': request}
@@ -134,13 +126,11 @@ def subscribe(request, id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     elif request.method == 'DELETE':
-        # Проверяем, подписаны ли мы на этого пользователя
         if not author.subscribers.filter(id=request.user.id).exists():
             return Response(
                 {"detail": "Вы не были подписаны на этого пользователя."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Удаляем подписку
+
         author.subscribers.remove(request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

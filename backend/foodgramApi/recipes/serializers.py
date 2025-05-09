@@ -74,7 +74,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError('Ingredients list cannot be empty')
         
-        # Check if all ingredient IDs exist
         ingredient_ids = [item['id'] for item in value]
         existing_ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
         if len(existing_ingredients) != len(ingredient_ids):
@@ -83,25 +82,20 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        # Ensure ingredients are provided during update
         if self.instance and 'ingredients' not in data:
             raise serializers.ValidationError({'ingredients': 'This field is required'})
         return data
 
     def validate_image(self, value):
         try:
-            # Check if the string is a valid base64 image
             if not value.startswith('data:image/'):
                 raise serializers.ValidationError('Invalid image format')
-            
-            # Split the string to get the image data
+
             format, imgstr = value.split(';base64,')
             ext = format.split('/')[-1]
-            
-            # Try to decode the base64 string
+
             data = base64.b64decode(imgstr)
-            
-            # Validate file size (max 5MB)
+
             if len(data) > 5 * 1024 * 1024:
                 raise serializers.ValidationError('Image size should not exceed 5MB')
             
@@ -113,20 +107,17 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         ingredients_data = validated_data.pop('ingredients')
         image_data = validated_data.pop('image')
 
-        # Create recipe
         recipe = Recipe.objects.create(
             author=self.context['request'].user,
             **validated_data
         )
 
-        # Save image
         format, imgstr = image_data.split(';base64,')
         ext = format.split('/')[-1]
         filename = f'recipe_{recipe.id}.{ext}'
         data = ContentFile(base64.b64decode(imgstr), name=filename)
         recipe.image.save(filename, data, save=True)
 
-        # Create recipe ingredients
         for ingredient_data in ingredients_data:
             RecipeIngredient.objects.create(
                 recipe=recipe,
@@ -137,12 +128,9 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        # Handle ingredients if provided
         if 'ingredients' in validated_data:
             ingredients_data = validated_data.pop('ingredients')
-            # Delete existing ingredients
             instance.recipe_ingredients.all().delete()
-            # Create new ingredients
             for ingredient_data in ingredients_data:
                 RecipeIngredient.objects.update_or_create(
                     recipe=instance,
@@ -150,7 +138,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
                     defaults={'amount': ingredient_data['amount']}
                 )
 
-        # Handle image if provided
         if 'image' in validated_data:
             image_data = validated_data.pop('image')
             format, imgstr = image_data.split(';base64,')
@@ -159,7 +146,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             data = ContentFile(base64.b64decode(imgstr), name=filename)
             instance.image.save(filename, data, save=True)
 
-        # Update other fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         

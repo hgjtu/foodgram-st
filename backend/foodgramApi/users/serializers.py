@@ -43,18 +43,14 @@ class UserAvatarSerializer(serializers.ModelSerializer):
 
     def validate_avatar(self, value):
         try:
-            # Check if the string is a valid base64 image
             if not value.startswith('data:image/'):
                 raise serializers.ValidationError('Invalid image format')
             
-            # Split the string to get the image data
             format, imgstr = value.split(';base64,')
             ext = format.split('/')[-1]
             
-            # Try to decode the base64 string
             data = base64.b64decode(imgstr)
-            
-            # Validate file size (max 5MB)
+
             if len(data) > 5 * 1024 * 1024:
                 raise serializers.ValidationError('Image size should not exceed 5MB')
             
@@ -63,17 +59,13 @@ class UserAvatarSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Invalid image data')
 
     def update(self, instance, validated_data):
-        # Split the string to get the image data
         format, imgstr = validated_data['avatar'].split(';base64,')
         ext = format.split('/')[-1]
-        
-        # Generate filename
+
         filename = f'avatar_{instance.id}.{ext}'
-        
-        # Create file from base64 data
+
         data = ContentFile(base64.b64decode(imgstr), name=filename)
-        
-        # Save the file
+
         instance.avatar.save(filename, data, save=True)
         return instance
 

@@ -42,12 +42,10 @@ def recipe_list(request):
 
     queryset = Recipe.objects.all()
 
-    # Фильтрация по автору
     author_id = request.query_params.get('author')
     if author_id:
         queryset = queryset.filter(author_id=author_id)
 
-    # Фильтрация по избранному
     is_favorited = request.query_params.get('is_favorited')
     if is_favorited and request.user.is_authenticated:
         if is_favorited == '1':
@@ -55,7 +53,6 @@ def recipe_list(request):
         elif is_favorited == '0':
             queryset = queryset.exclude(favorited_by=request.user)
 
-    # Фильтрация по списку покупок
     is_in_shopping_cart = request.query_params.get('is_in_shopping_cart')
     if is_in_shopping_cart and request.user.is_authenticated:
         if is_in_shopping_cart == '1':
@@ -63,7 +60,6 @@ def recipe_list(request):
         elif is_in_shopping_cart == '0':
             queryset = queryset.exclude(in_shopping_carts=request.user)
 
-    # Пагинация
     paginator = CustomPagination()
     result_page = paginator.paginate_queryset(queryset, request)
     serializer = RecipeListSerializer(
@@ -107,8 +103,7 @@ def recipe_detail(request, id):
     )
     serializer.is_valid(raise_exception=True)
     serializer.save()
-    
-    # Возвращаем обновленный рецепт в формате RecipeListSerializer
+
     response_serializer = RecipeListSerializer(recipe, context={'request': request})
     return Response(response_serializer.data)
 
@@ -118,12 +113,9 @@ def recipe_detail(request, id):
 def recipe_get_link(request, id):
     recipe = get_object_or_404(Recipe, id=id)
     
-    # Генерируем короткую ссылку на основе id рецепта
-    # Используем первые 3 символа хеша id для создания короткой ссылки
     hash_object = hashlib.md5(str(recipe.id).encode())
     short_hash = hash_object.hexdigest()[:3]
     
-    # Формируем полную короткую ссылку
     short_link = f"https://foodgram.example.org/s/{short_hash}"
     
     return Response({"short-link": short_link})
@@ -195,35 +187,3 @@ def favorites(request, id):
         )
     request.user.favorites.remove(recipe)
     return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-# @api_view(['GET'])
-# @permission_classes([AllowAny])
-# def ingredient_list(request):
-#     # Получаем параметр поиска
-#     name = request.query_params.get('name', '')
-    
-#     # Базовый queryset
-#     queryset = Ingredient.objects.all()
-    
-#     # Если есть параметр поиска, фильтруем по нему
-#     if name:
-#         queryset = queryset.filter(name__istartswith=name)
-    
-#     # Сериализуем данные
-#     serializer = IngredientSerializer(queryset, many=True)
-    
-#     return Response(serializer.data)
-
-
-# @api_view(['GET'])
-# @permission_classes([AllowAny])
-# def ingredient_detail(request, id):
-#     # Получаем ингредиент по id
-#     ingredient = get_object_or_404(Ingredient, id=id)
-    
-#     # Сериализуем данные
-#     serializer = IngredientSerializer(ingredient)
-    
-#     return Response(serializer.data)
-

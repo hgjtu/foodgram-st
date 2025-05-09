@@ -10,11 +10,11 @@ from .views import (
 )
 
 urlpatterns = [
-    path('', user_list, name='user-list'),  # GET and POST
+    path('', user_list, name='user-list'),
     path('<int:id>/', user_detail, name='user-detail'),
     path('me/', user_me, name='user-me'),
     path('me/avatar/', user_avatar, name='user-avatar'),
     path('set_password/', user_set_password, name='user-set-password'),
     path('subscriptions/', subscriptions, name='user-subscriptions'),
-    path('<int:id>/subscribe/', subscribe, name='user-subscribe'),  # POST and DELETE
+    path('<int:id>/subscribe/', subscribe, name='user-subscribe'),
 ]
