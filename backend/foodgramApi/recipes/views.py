@@ -112,11 +112,10 @@ def recipe_detail(request, id):
 @permission_classes([AllowAny])
 def recipe_get_link(request, id):
     recipe = get_object_or_404(Recipe, id=id)
-    
+    origin = request.build_absolute_uri('/').rstrip('/')
     hash_object = hashlib.md5(str(recipe.id).encode())
     short_hash = hash_object.hexdigest()[:3]
-    
-    short_link = f"https://foodgram.example.org/s/{short_hash}"
+    short_link = f"{origin}/s/{short_hash}"
     
     return Response({"short-link": short_link})
 

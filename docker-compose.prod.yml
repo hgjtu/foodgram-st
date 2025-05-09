@@ -5,7 +5,7 @@ services:
     image: hgjtu/foodgram-db:latest
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./backups/backup.sql:/docker-entrypoint-initdb.d/backup.sql
+      - ./backups/backup.sql:/docker-entrypoint-initdb.d/backup.sql:ro
       # - ./backups:/backups
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
