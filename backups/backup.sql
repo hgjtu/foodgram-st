@@ -549,6 +549,8 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 
 COPY public.authtoken_token (key, created, user_id) FROM stdin;
 a0e450a21e7838aa4c669a3e5915fc911f92f44e	2025-05-09 16:32:36.087972+00	3
+cc7e52a0292a397f16c2f71bc969903c9df0660f	2025-05-09 16:36:46.333023+00	5
+ec5ab437943009d09754f71c6ca480242b3b2ff9	2025-05-09 16:36:48.43606+00	4
 \.
 
 
@@ -2828,6 +2830,8 @@ COPY public.recipes_recipe (id, name, image, text, cooking_time, created, author
 3	Шоколадные маффины с вишней	recipes/images/recipe_3.jpeg	1. Растопить масло, смешать с сахаром, яйцами и молоком.\n2. Добавить муку, какао и разрыхлитель, перемешать.\n3. В тесто добавить вишню (без косточек).\n4. Разлить по формочкам, выпекать 25 минут при 180°C.	35	2025-05-09 12:22:52.803275+00	3
 4	Овощной салат с авокадо и креветками	recipes/images/recipe_4.jpeg	1. Авокадо, огурец и помидоры нарезать кубиками.\n2. Смешать с рукколой и креветками.\n3. Заправить маслом, лимонным соком, солью и перцем.	15	2025-05-09 12:25:13.01221+00	3
 5	Фокачча с розмарином и чесноком	recipes/images/recipe_5_tQ9JhTv.jpeg	1. Замесить тесто из муки, воды, дрожжей и 2 ст. л. масла. Накрыть, дать подойти 1 час.\n2. Раскатать в прямоугольник, смазать маслом, сделать углубления пальцами.\n3. Посыпать рубленым чесноком, розмарином и солью.\n4. Выпекать 20–25 минут при 200°C до золотистой корочки. Подавать тёплой!	120	2025-05-09 12:28:04.220639+00	1
+11	Гречневая лапша с лососем в соусе терияки	recipes/images/recipe_11_mYHfzU9.jpeg	1. Лапшу отварить по инструкции, промыть холодной водой.\n2. Лосось нарезать кубиками, обжарить 3–4 минуты, сбрызнуть 2 ст. л. соуса терияки.\n3. Овощи нарезать соломкой, быстро обжарить на сильном огне.\n4. Смешать лапшу, лосось и овощи, добавить оставшийся соус. Посыпать кунжутом и зелёным луком.	25	2025-05-09 16:39:49.517692+00	3
+12	Шоколадно-банановые панкейки	recipes/images/recipe_12_J27oaUE.jpeg	1. Бананы размять вилкой, смешать с яйцом и молоком.\n2. Добавить муку, какао, разрыхлитель и сахар, перемешать.\n3. Влить шоколадные капли.\n4. Жарить на сухой сковороде по 2 минуты с каждой стороны. Подавать с кленовым сиропом.	20	2025-05-09 16:40:06.941871+00	3
 \.
 
 
@@ -2871,6 +2875,20 @@ COPY public.recipes_recipeingredient (id, amount, ingredient_id, recipe_id) FROM
 40	40	2055	5
 41	15	1476	5
 42	10	1684	5
+53	200	822	11
+54	300	866	11
+55	100	1240	11
+56	70	1053	11
+57	20	879	11
+58	20	1704	11
+59	200	97	12
+60	50	2180	12
+61	150	1032	12
+62	200	1081	12
+63	30	498	12
+64	10	1409	12
+65	30	1546	12
+66	50	2102	12
 \.
 
 
@@ -2882,6 +2900,9 @@ COPY public.users_user (id, last_login, is_superuser, is_staff, is_active, date_
 2	\N	f	f	t	2025-05-09 12:03:47.715501+00	mk	mk@example.com	М	К	pbkdf2_sha256$1000000$Ix1bzd2q3dx6lY8G5pvnBo$3b4L9tXo3WexjAwBWMnG4e6Hj3vsuGIWr7y/w2kF8yE=	f	
 1	\N	t	t	t	2025-05-09 12:02:12.874142+00	admin	admin@example.com			pbkdf2_sha256$1000000$YI6GTWcC9WglNl8SSpFs7P$KrOE6Yq0dLPoJy2GJ2/FqQV0t0xzM19WBM1CZawV5Ns=	f	
 3	\N	f	f	t	2025-05-09 12:15:05.539412+00	km	km@example.com	К	М	pbkdf2_sha256$1000000$r3Gcd5NbzWjfbtAbmlFY6d$QfG8WmJ9xi/1JHKK/x6OHntvJApbmF31aLPsD7Cx/s4=	f	
+5	\N	f	f	t	2025-05-09 16:36:43.279367+00	second-user	second_user@email.org	Андрей	Макаревский	pbkdf2_sha256$1000000$h90ugfqyGXL8u1E7VYG4CH$jHx95Homqe9e8nFLxeW4zFAf4igO1W/lCzzF0kY5NgQ=	f	userpic-icon.jpg
+6	\N	f	f	t	2025-05-09 16:36:44.018935+00	third-user-username	third-user@user.ru	Гордон	Рамзиков	pbkdf2_sha256$1000000$dwASvNK4MtbsGCwn7o6qJk$LFI0NcntooYkxlG8m/rc9AVifWTEiIpdJGPwVia48AI=	f	userpic-icon.jpg
+4	\N	f	f	t	2025-05-09 16:36:42.408166+00	vasya.ivanov	vivanov@yandex.ru	Вася	Иванов	pbkdf2_sha256$1000000$GPAlzifAwnEkB2aGNeUIpJ$qvCY3XwBnHu/cYEABdHN03EAPANkTVF1s83qJODS50s=	f	
 \.
 
 
@@ -2989,21 +3010,21 @@ SELECT pg_catalog.setval('public.ingredients_ingredient_id_seq', 2186, true);
 -- Name: recipes_recipe_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.recipes_recipe_id_seq', 5, true);
+SELECT pg_catalog.setval('public.recipes_recipe_id_seq', 12, true);
 
 
 --
 -- Name: recipes_recipeingredient_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.recipes_recipeingredient_id_seq', 42, true);
+SELECT pg_catalog.setval('public.recipes_recipeingredient_id_seq', 66, true);
 
 
 --
 -- Name: users_user_favorites_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_user_favorites_id_seq', 4, true);
+SELECT pg_catalog.setval('public.users_user_favorites_id_seq', 5, true);
 
 
 --
@@ -3017,21 +3038,21 @@ SELECT pg_catalog.setval('public.users_user_groups_id_seq', 1, false);
 -- Name: users_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_user_id_seq', 3, true);
+SELECT pg_catalog.setval('public.users_user_id_seq', 6, true);
 
 
 --
 -- Name: users_user_shopping_cart_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_user_shopping_cart_id_seq', 7, true);
+SELECT pg_catalog.setval('public.users_user_shopping_cart_id_seq', 8, true);
 
 
 --
 -- Name: users_user_subscriptions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_user_subscriptions_id_seq', 2, true);
+SELECT pg_catalog.setval('public.users_user_subscriptions_id_seq', 4, true);
 
 
 --
