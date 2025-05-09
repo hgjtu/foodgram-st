@@ -59,7 +59,7 @@ jobs:
         DEBUG: True
         PYTHONPATH: ${{ github.workspace }}/backend
       run: |
-        cd backend
+        cd backend/foodgramApi
         python manage.py test --keepdb
 
     - name: Upload coverage to Codecov
