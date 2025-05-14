@@ -13,18 +13,23 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import dotenv_values
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env_path = Path(__file__).resolve().parent.parent.parent.parent / '.env'
+config = dotenv_values(env_path)
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-i7e_-53$_phhrl_b6r%z$*^8(+!v1l%1h7zmj5ho2oo76b02^9"
+SECRET_KEY = config.get("SECRET_KEY", "your_django_secret_key_here"),
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = config.get("DEBUG", "False"),
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 
@@ -90,11 +95,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "foodgram"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
-        "HOST": os.getenv("DB_HOST", "db"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        "NAME": config.get("DB_NAME", "foodgram"),
+        "USER": config.get("DB_USER", "postgres"),
+        "PASSWORD": config.get("DB_PASSWORD", "1234"),
+        "HOST": config.get("DB_HOST", "localhost"),
+        "PORT": config.get("DB_PORT", "5432"),
         "OPTIONS": {
             "client_encoding": "UTF8",
         },
@@ -124,9 +129,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "ru"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Moscow"
 
 USE_I18N = True
 

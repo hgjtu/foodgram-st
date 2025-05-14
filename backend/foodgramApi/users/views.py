@@ -17,7 +17,7 @@ from .serializers import (
 User = get_user_model()
 
 
-class CustomPagination(PageNumberPagination):
+class ExtendedPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "limit"
     max_page_size = 100
@@ -35,7 +35,7 @@ def user_list(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     users = User.objects.all()
-    paginator = CustomPagination()
+    paginator = ExtendedPagination()
     result_page = paginator.paginate_queryset(users, request)
     serializer = UserSerializer(result_page,
                                 many=True, context={"request": request})
@@ -90,7 +90,7 @@ def user_set_password(request):
 def subscriptions(request):
     subscribed_users = User.objects.filter(subscribers=request.user)
 
-    paginator = CustomPagination()
+    paginator = ExtendedPagination()
     result_page = paginator.paginate_queryset(subscribed_users, request)
 
     serializer = UserWithRecipesSerializer(

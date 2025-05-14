@@ -12,14 +12,12 @@ class User(AbstractUser):
         validators=[
             RegexValidator(
                 regex=r"^[\w.@+-]+\Z",
-                message="Недопустимые символы в имени пользователя",
             )
         ],
     )
     email = models.EmailField("Email", max_length=254, unique=True)
     first_name = models.CharField("Имя", max_length=150)
     last_name = models.CharField("Фамилия", max_length=150)
-    password = models.CharField("Пароль", max_length=150)
     is_subscribed = models.BooleanField("Подписка на рассылку", default=False)
     avatar = models.ImageField(
         "Аватар", upload_to="users/",
