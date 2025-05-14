@@ -5,8 +5,6 @@ services:
     image: hgjtu/foodgram-db:latest
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./backups/backup.sql:/docker-entrypoint-initdb.d/backup.sql:ro
-      # - ./backups:/backups
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -25,8 +23,6 @@ services:
       - static_volume:/app/static
       - media_volume:/app/media
       - ./data:/app/data
-      - ./backups:/app/backups
-      - ./media_ex:/app/media_ex
     expose:
       - 8000
     environment:

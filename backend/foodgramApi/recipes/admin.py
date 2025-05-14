@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 from .models import Recipe, RecipeIngredient
 
 
@@ -10,7 +11,7 @@ class RecipeIngredientInline(admin.TabularInline):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ("name", "author", "favorite_count")
+    list_display = ("id", "name", "cooking_time", "author", "favorite_count", "ingredients_display", "image_display")
     search_fields = (
         "name",
         "author__username",
@@ -26,10 +27,28 @@ class RecipeAdmin(admin.ModelAdmin):
         ("Статистика", {"fields": ("favorite_count",)}),
     )
 
-    def favorite_count(self, obj):
-        return obj.favorited_by.count()
+    @admin.display(description="Добавлений в избранное")
+    def favorite_count(self, recipe):
+        return recipe.favorited_by.count()
 
-    favorite_count.short_description = "Добавлений в избранное"
+    @admin.display(description="Продукты")
+    def ingredients_display(self, recipe):
+        ingredients = recipe.recipeingredient_set.all()
+        if not ingredients.exists():
+            return "Нет ингредиентов"
+        
+        html_parts = []
+        for item in ingredients:
+            html_parts.append(f"<li>{item.ingredient.name}: {item.amount}</li>")
+        
+        html_ul = f"<ul>{''.join(html_parts)}</ul>"
+        return mark_safe(html_ul)
+
+    @admin.display(description="Картинка")
+    def image_display(self, recipe):
+        if recipe.image and hasattr(recipe.image, 'url'):
+            return mark_safe(f'<img src="{recipe.image.url}" style="max-width: 70px; max-height: 70px; object-fit: cover;" />')
+        return "Нет изображения"
 
 
 @admin.register(RecipeIngredient)

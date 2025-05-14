@@ -22,6 +22,4 @@ python manage.py load_ingredients /app/data/ingredients.json
 
 python manage.py collectstatic --noinput
 
-# cp -r /app/media_ex/. /app/media/
-
 exec gunicorn --bind 0.0.0.0:8000 foodgramApi.wsgi:application 
