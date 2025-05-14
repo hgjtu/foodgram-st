@@ -1,18 +1,12 @@
-from django.urls import path
-from api.views.recipes import (
-    recipe_list_create,
-    recipe_detail,
-    recipe_favorite,
-    recipe_shopping_cart,
-    download_shopping_cart
-)
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from api.views.recipes import RecipeViewSet
 
 app_name = 'recipes'
 
+router = DefaultRouter()
+router.register(r'recipes', RecipeViewSet, basename='recipe')
+
 urlpatterns = [
-    path('recipes/', recipe_list_create, name='recipe-list'),
-    path('recipes/<int:pk>/', recipe_detail, name='recipe-detail'),
-    path('recipes/<int:pk>/favorite/', recipe_favorite, name='recipe-favorite'),
-    path('recipes/<int:pk>/shopping_cart/', recipe_shopping_cart, name='recipe-shopping-cart'),
-    path('recipes/download_shopping_cart/', download_shopping_cart, name='download-shopping-cart'),
+    path('', include(router.urls)),
 ] 

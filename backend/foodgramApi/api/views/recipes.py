@@ -1,12 +1,12 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS, BasePermission
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.db.models import Sum
-from .models import Recipe, RecipeIngredient
+from .models import Recipe, RecipeIngredient, User
 from .serializers import (
     RecipeListSerializer,
     RecipeCreateSerializer,
@@ -26,167 +26,139 @@ class CustomPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@api_view(["GET", "POST"])
-@permission_classes([AllowAny])
-def recipe_list(request):
-    if request.method == "POST":
-        if not request.user.is_authenticated:
-            return Response(
-                {"detail": "Учетные данные не были предоставлены."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        serializer = RecipeCreateSerializer(
-            data=request.data, context={"request": request}
-        )
-        if not serializer.is_valid():
-            return Response(serializer.errors,
-                            status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+class IsAuthorOrReadOnly(BasePermission):
+    """
+    Custom permission to only allow authors of an object to edit it.
+    Assumes the instance has an 'author' attribute.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any request,
+        # so we'll always allow GET, HEAD or OPTIONS requests.
+        if request.method in SAFE_METHODS:
+            return True
 
+        # Write permissions are only allowed to the author of the recipe.
+        return obj.author == request.user
+
+
+class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
+    pagination_class = CustomPagination
 
-    author_id = request.query_params.get("author")
-    if author_id:
-        queryset = queryset.filter(author_id=author_id)
+    def get_serializer_class(self):
+        if self.action in ['create', 'partial_update', 'update']:
+            return RecipeCreateSerializer
+        # For 'favorite' and 'shopping_cart' POST, we use ShortRecipeSerializer
+        # The list and retrieve actions use RecipeListSerializer by default (can be specified too)
+        if self.action in ['favorite', 'shopping_cart'] and self.request.method == 'POST':
+            return ShortRecipeSerializer
+        return RecipeListSerializer # Default for list, retrieve
 
-    is_favorited = request.query_params.get("is_favorited")
-    if is_favorited and request.user.is_authenticated:
-        if is_favorited == "1":
-            queryset = queryset.filter(favorited_by=request.user)
-        elif is_favorited == "0":
-            queryset = queryset.exclude(favorited_by=request.user)
+    def get_permissions(self):
+        if self.action in ['create', 'favorite', 'shopping_cart', 'download_shopping_cart']:
+            # Create, favorite, shopping_cart require authentication
+            self.permission_classes = [IsAuthenticated]
+        elif self.action in ['partial_update', 'update', 'destroy']:
+            # Modifying/deleting a recipe requires being the author or admin
+            self.permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
+        else:
+            # List, retrieve are AllowAny
+            self.permission_classes = [AllowAny]
+        return super().get_permissions()
 
-    is_in_shopping_cart = request.query_params.get("is_in_shopping_cart")
-    if is_in_shopping_cart and request.user.is_authenticated:
-        if is_in_shopping_cart == "1":
-            queryset = queryset.filter(in_shopping_carts=request.user)
-        elif is_in_shopping_cart == "0":
-            queryset = queryset.exclude(in_shopping_carts=request.user)
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
-    paginator = CustomPagination()
-    result_page = paginator.paginate_queryset(queryset, request)
-    serializer = RecipeListSerializer(
-        result_page, many=True, context={"request": request}
-    )
-    return paginator.get_paginated_response(serializer.data)
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
 
+        author_id = request.query_params.get("author")
+        if author_id:
+            queryset = queryset.filter(author_id=author_id)
 
-@api_view(["GET", "PATCH", "DELETE"])
-@permission_classes([AllowAny])
-def recipe_detail(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
+        if request.user.is_authenticated:
+            is_favorited = request.query_params.get("is_favorited")
+            if is_favorited == "1":
+                queryset = queryset.filter(favorited_by=request.user)
+            elif is_favorited == "0":
+                queryset = queryset.exclude(favorited_by=request.user)
 
-    if request.method == "GET":
-        serializer = RecipeListSerializer(recipe, context={"request": request})
+            is_in_shopping_cart = request.query_params.get("is_in_shopping_cart")
+            if is_in_shopping_cart == "1":
+                queryset = queryset.filter(in_shopping_carts=request.user)
+            elif is_in_shopping_cart == "0":
+                queryset = queryset.exclude(in_shopping_carts=request.user)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
-    if not request.user.is_authenticated:
-        return Response(
-            {"detail": "Учетные данные не были предоставлены."},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def favorite(self, request, pk=None):
+        recipe = self.get_object()
+        user = request.user
 
-    if recipe.author != request.user:
-        return Response(
-            {"detail": "У вас нет прав на выполнение этого действия."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
-    if request.method == "DELETE":
-        recipe.delete()
+        if request.method == 'POST':
+            if user.favorites.filter(id=recipe.id).exists():
+                return Response(
+                    {"errors": "Рецепт уже в избранном."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            user.favorites.add(recipe)
+            serializer = self.get_serializer(recipe, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        # DELETE request
+        if not user.favorites.filter(id=recipe.id).exists():
+            return Response(
+                {"errors": "Рецепт не был в избранном."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.favorites.remove(recipe)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    serializer = RecipeCreateSerializer(
-        recipe, data=request.data,
-        partial=True, context={"request": request}
-    )
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
+        user = request.user
 
-    response_serializer = RecipeListSerializer(
-        recipe, context={"request": request})
-    return Response(response_serializer.data)
+        if request.method == 'POST':
+            if user.shopping_cart.filter(id=recipe.id).exists(): # Assuming 'shopping_cart' is the related_name on User model
+                return Response(
+                    {"errors": "Рецепт уже в списке покупок."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            user.shopping_cart.add(recipe)
+            serializer = self.get_serializer(recipe, context={'request': request}) # Uses ShortRecipeSerializer due to get_serializer_class logic
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def recipe_get_link(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-    origin = request.build_absolute_uri("/").rstrip("/")
-    hash_object = hashlib.md5(str(recipe.id).encode())
-    short_hash = hash_object.hexdigest()[:3]
-    short_link = f"{origin}/s/{short_hash}"
-
-    return Response({"short-link": short_link})
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def download_shopping_cart(request):
-    ingredients = (
-        RecipeIngredient.objects.filter(recipe__in_shopping_carts=request.user)
-        .values("ingredient__name", "ingredient__measurement_unit")
-        .annotate(total_amount=Sum("amount"))
-        .order_by("ingredient__name")
-    )
-
-    html = render_to_string("shopping_list.html", {"ingredients": ingredients})
-    pdf_file = HTML(string=html, encoding="utf-8").write_pdf()
-
-    response = HttpResponse(pdf_file, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        'attachment;\
-        filename="shopping_list.pdf"'
-    )
-    return response
-
-
-@api_view(["POST", "DELETE"])
-@permission_classes([IsAuthenticated])
-def shopping_cart(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-
-    if request.method == "POST":
-        if request.user.shopping_cart.filter(id=id).exists():
+        # DELETE request
+        if not user.shopping_cart.filter(id=recipe.id).exists():
             return Response(
-                {"detail": "Рецепт уже в списке покупок."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"errors": "Рецепт не был в списке покупок."},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        request.user.shopping_cart.add(recipe)
-        serializer = ShortRecipeSerializer(recipe,
-                                           context={"request": request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        user.shopping_cart.remove(recipe)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    if not request.user.shopping_cart.filter(id=id).exists():
-        return Response(
-            {"detail": "Рецепт не был в списке покупок."},
-            status=status.HTTP_400_BAD_REQUEST,
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def download_shopping_cart(self, request):
+        ingredients = (
+            RecipeIngredient.objects.filter(recipe__in_shopping_carts=request.user)
+            .values("ingredient__name", "ingredient__measurement_unit")
+            .annotate(total_amount=Sum("amount"))
+            .order_by("ingredient__name")
         )
-    request.user.shopping_cart.remove(recipe)
-    return Response(status=status.HTTP_204_NO_CONTENT)
 
+        # Ensure 'shopping_list.html' template exists and is configured
+        html = render_to_string("shopping_list.html", {"ingredients": ingredients})
+        # Ensure weasyprint is installed and wkhtmltopdf (or alternative) is available if needed by weasyprint
+        pdf_file = HTML(string=html, encoding="utf-8").write_pdf()
 
-@api_view(["POST", "DELETE"])
-@permission_classes([IsAuthenticated])
-def favorites(request, id):
-    recipe = get_object_or_404(Recipe, id=id)
-
-    if request.method == "POST":
-        if request.user.favorites.filter(id=id).exists():
-            return Response(
-                {"detail": "Рецепт уже в избранном."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        request.user.favorites.add(recipe)
-        serializer = ShortRecipeSerializer(recipe,
-                                           context={"request": request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    if not request.user.favorites.filter(id=id).exists():
-        return Response(
-            {"detail": "Рецепт не был в избранном."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    request.user.favorites.remove(recipe)
-    return Response(status=status.HTTP_204_NO_CONTENT)
+        response = HttpResponse(pdf_file, content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="shopping_list.pdf"'
+        return response

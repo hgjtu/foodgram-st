@@ -1,6 +1,6 @@
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
@@ -21,103 +21,79 @@ class ExtendedPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@api_view(["GET", "POST"])
-@permission_classes([AllowAny])
-def user_list(request):
-    if request.method == "POST":
-        serializer = UserCreateSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors,
-                            status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+class UserActionsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
 
-    users = User.objects.all()
-    paginator = ExtendedPagination()
-    result_page = paginator.paginate_queryset(users, request)
-    serializer = UserSerializer(result_page,
-                                many=True, context={"request": request})
-    return paginator.get_paginated_response(serializer.data)
+    def get_queryset(self):
+        return User.objects.all()
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='me')
+    def me(self, request):
+        serializer = CustomUserSerializer(request.user, context={'request': request})
+        return Response(serializer.data)
 
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def user_detail(request, id):
-    user = get_object_or_404(User, id=id)
-    serializer = UserSerializer(user, context={"request": request})
-    return Response(serializer.data)
+    @action(detail=False, methods=['put', 'delete'], permission_classes=[IsAuthenticated], url_path='me/avatar')
+    def avatar(self, request):
+        user = request.user
+        if request.method == "DELETE":
+            if user.avatar:
+                if hasattr(user.avatar, 'path') and user.avatar.name != "users/image.png":
+                    default_storage.delete(user.avatar.path)
+                elif user.avatar.name != "users/image.png":
+                    user.avatar.delete(save=False)
+                user.avatar = None
+                user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
+        serializer = UserAvatarSerializer(user, data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        updated_user = serializer.save()
+        avatar_url = request.build_absolute_uri(updated_user.avatar.url) if updated_user.avatar else None
+        return Response({'avatar': avatar_url})
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def user_me(request):
-    serializer = UserSerializer(request.user, context={"request": request})
-    return Response(serializer.data)
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='subscriptions')
+    def list_subscriptions(self, request):
+        user = request.user
+        subscribed_to_users = User.objects.filter(subscribers=user)
 
+        paginator = ExtendedPagination()
+        result_page = paginator.paginate_queryset(subscribed_to_users, request)
+        serializer = UserWithRecipesSerializer(
+            result_page, many=True, context={"request": request}
+        )
+        return paginator.get_paginated_response(serializer.data)
 
-@api_view(["PUT", "DELETE"])
-@permission_classes([IsAuthenticated])
-def user_avatar(request):
-    if request.method == "DELETE":
-        if request.user.avatar:
-            if request.user.avatar.name != "users/image.png":
-                default_storage.delete(request.user.avatar.path)
-            request.user.avatar = None
-            request.user.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def subscribe(self, request, pk=None):
+        author_to_subscribe_to = get_object_or_404(User, id=pk)
+        user = request.user
 
-    serializer = UserAvatarSerializer(request.user, data=request.data)
-    serializer.is_valid(raise_exception=True)
-    user = serializer.save()
-    return Response({"avatar": request.build_absolute_uri(user.avatar.url)})
+        if request.method == "POST":
+            if author_to_subscribe_to == user:
+                return Response(
+                    {"errors": "Нельзя подписаться на самого себя."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if author_to_subscribe_to.subscribers.filter(id=user.id).exists():
+                return Response(
+                    {"errors": f"Вы уже подписаны на пользователя {author_to_subscribe_to.username}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            author_to_subscribe_to.subscribers.add(user)
+            serializer = UserWithRecipesSerializer(author_to_subscribe_to, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def subscriptions(request):
-    subscribed_users = User.objects.filter(subscribers=request.user)
-
-    paginator = ExtendedPagination()
-    result_page = paginator.paginate_queryset(subscribed_users, request)
-
-    serializer = UserWithRecipesSerializer(
-        result_page, many=True, context={"request": request}
-    )
-
-    return paginator.get_paginated_response(serializer.data)
-
-
-@api_view(["POST", "DELETE"])
-@permission_classes([IsAuthenticated])
-def subscribe(request, id):
-    author = get_object_or_404(User, id=id)
-
-    if request.method == "POST":
-        if author == request.user:
-            return Response(
-                {"detail": "Нельзя подписаться на самого себя."},
-                status=status.HTTP_400_BAD_REQUEST,
+        elif request.method == "DELETE":
+            if not author_to_subscribe_to.subscribers.filter(id=user.id).exists():
+                return Response(
+                    {"errors": f"Вы не были подписаны на пользователя {author_to_subscribe_to.username}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            subscription_to_delete = get_object_or_404(
+                User.subscriptions.through,
+                from_user=user,
+                to_user=author_to_subscribe_to
             )
-
-        if author.subscribers.filter(id=request.user.id).exists():
-            return Response(
-                {"detail": "Вы уже подписаны на этого пользователя."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        author.subscribers.add(request.user)
-
-        serializer = UserWithRecipesSerializer(author,
-                                               context={"request": request})
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    elif request.method == "DELETE":
-        if not author.subscribers.filter(id=request.user.id).exists():
-            return Response(
-                {"detail": "Вы не были подписаны на этого пользователя."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        author.subscribers.remove(request.user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            subscription_to_delete.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)

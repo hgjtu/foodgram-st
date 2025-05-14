@@ -1,9 +1,12 @@
-from django.urls import path
-from api.views.ingredients import ingredient_list, ingredient_detail
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from api.views.ingredients import IngredientViewSet
 
 app_name = 'ingredients'
 
+router = DefaultRouter()
+router.register(r'ingredients', IngredientViewSet, basename='ingredient')
+
 urlpatterns = [
-    path('ingredients/', ingredient_list, name='ingredient-list'),
-    path('ingredients/<int:pk>/', ingredient_detail, name='ingredient-detail'),
+    path('', include(router.urls)),
 ] 
