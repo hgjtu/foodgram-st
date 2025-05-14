@@ -7,10 +7,8 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.core.files.storage import default_storage
 from .serializers import (
-    UserSerializer,
-    UserCreateSerializer,
+    CustomUserSerializer,
     UserAvatarSerializer,
-    PasswordChangeSerializer,
     UserWithRecipesSerializer,
 )
 
@@ -72,17 +70,6 @@ def user_avatar(request):
     serializer.is_valid(raise_exception=True)
     user = serializer.save()
     return Response({"avatar": request.build_absolute_uri(user.avatar.url)})
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def user_set_password(request):
-    serializer = PasswordChangeSerializer(
-        data=request.data, context={"request": request}
-    )
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["GET"])

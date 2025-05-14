@@ -43,12 +43,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "ingredients.apps.IngredientsConfig",
-    "recipes.apps.RecipesConfig",
-    "users.apps.UsersConfig",
     "rest_framework",
     "rest_framework.authtoken",
-    "corsheaders",
+    "djoser",
+    "api.apps.ApiConfig",
+    "users.apps.UsersConfig",
+    "recipes.apps.RecipesConfig",
+    "ingredients.apps.IngredientsConfig",
 ]
 
 MIDDLEWARE = [
@@ -163,3 +164,16 @@ REST_FRAMEWORK = {
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+DJOSER = {
+    'LOGIN_FIELD': 'email',
+    'SERIALIZERS': {
+        'user': 'users.serializers.CustomUserSerializer',
+        'current_user': 'users.serializers.CustomUserSerializer',
+    },
+    'PERMISSIONS': {
+        'user': ['rest_framework.permissions.IsAuthenticated'],
+        'user_list': ['rest_framework.permissions.IsAuthenticated'],
+    },
+    'HIDE_USERS': False,
+}

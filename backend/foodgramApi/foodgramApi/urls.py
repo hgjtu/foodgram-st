@@ -16,19 +16,13 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import include, path
-
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("api/ingredients/", include("ingredients.urls")),
-    path("api/recipes/", include("recipes.urls")),
-    path("api/users/", include("users.urls")),
-    path("api/auth/", include("auth.urls")),
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL,
-                          document_root=settings.MEDIA_ROOT)
+    path('admin/', admin.site.urls),
+    path('api/v1/', include('api.urls.v1')),
+    path('auth/', include('djoser.urls')),
+    path('auth/', include('djoser.urls.authtoken')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

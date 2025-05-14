@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Recipe, RecipeIngredient, Ingredient
-from users.serializers import UserSerializer
+from recipes.models import Recipe, RecipeIngredient, Ingredient
+from .users import CustomUserSerializer
 import base64
 from django.core.files.base import ContentFile
 
@@ -11,8 +11,7 @@ User = get_user_model()
 class RecipeIngredientSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source="ingredient.id")
     name = serializers.ReadOnlyField(source="ingredient.name")
-    measurement_unit = serializers\
-        .ReadOnlyField(source="ingredient.measurement_unit")
+    measurement_unit = serializers.ReadOnlyField(source="ingredient.measurement_unit")
 
     class Meta:
         model = RecipeIngredient
@@ -20,9 +19,8 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeListSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    ingredients = RecipeIngredientSerializer(source="recipe_ingredients",
-                                             many=True)
+    author = CustomUserSerializer(read_only=True)
+    ingredients = RecipeIngredientSerializer(source="recipe_ingredients", many=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -68,36 +66,31 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def validate_ingredients(self, value):
         if not value:
-            raise serializers\
-                .ValidationError("Ingredients list cannot be empty")
+            raise serializers.ValidationError("Ingredients list cannot be empty")
 
         ingredient_ids = [item["id"] for item in value]
         existing_ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
         if len(existing_ingredients) != len(ingredient_ids):
-            raise serializers\
-                .ValidationError("One or more ingredients do not exist")
+            raise serializers.ValidationError("One or more ingredients do not exist")
 
         return value
 
     def validate(self, data):
         if self.instance and "ingredients" not in data:
-            raise serializers\
-                .ValidationError({"ingredients": "This field is required"})
+            raise serializers.ValidationError({"ingredients": "This field is required"})
         return data
 
     def validate_image(self, value):
         try:
             if not value.startswith("data:image/"):
-                raise serializers\
-                    .ValidationError("Invalid image format")
+                raise serializers.ValidationError("Invalid image format")
 
             format, imgstr = value.split(";base64,")
 
             data = base64.b64decode(imgstr)
 
             if len(data) > 5 * 1024 * 1024:
-                raise serializers\
-                    .ValidationError("Image size should not exceed 5MB")
+                raise serializers.ValidationError("Image size should not exceed 5MB")
 
             return value
         except Exception:
@@ -155,13 +148,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return RecipeListSerializer(instance, context=self.context).data
 
 
-class IngredientSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Ingredient
-        fields = ("id", "name", "measurement_unit")
-
-
 class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
-        fields = ("id", "name", "image", "cooking_time")
+        fields = ("id", "name", "image", "cooking_time") 
