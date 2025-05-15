@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.db.models import Sum
-from .models import Recipe, RecipeIngredient, User
-from .serializers import (
+from recipes.models import Recipe, RecipeIngredient, User
+from ..serializers.recipes import (
     RecipeListSerializer,
     RecipeCreateSerializer,
     ShortRecipeSerializer,
@@ -27,17 +27,9 @@ class CustomPagination(PageNumberPagination):
 
 
 class IsAuthorOrReadOnly(BasePermission):
-    """
-    Custom permission to only allow authors of an object to edit it.
-    Assumes the instance has an 'author' attribute.
-    """
     def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
         if request.method in SAFE_METHODS:
             return True
-
-        # Write permissions are only allowed to the author of the recipe.
         return obj.author == request.user
 
 

@@ -51,3 +51,30 @@ class UserWithRecipesSerializer(CustomUserSerializer):
 
         recipes = Recipe.objects.filter(author=obj)[:recipes_limit]
         return ShortRecipeSerializer(recipes, many=True, context={'request': request}).data 
+    
+class UserAvatarSerializer(serializers.ModelSerializer): 
+    avatar = serializers.CharField(required=True) 
+    class Meta: 
+        model = User 
+        fields = ("avatar",)  
+
+    def validate_avatar(self, value): 
+        try: 
+            if not value.startswith("data:image/"): 
+                raise serializers.ValidationError("Invalid image format") 
+            format, imgstr = value.split(";base64,") 
+            data = base64.b64decode(imgstr) 
+            if len(data) > 5 * 1024 * 1024: 
+                raise serializers.ValidationError("Image size should not exceed 5MB") 
+            return value 
+        except Exception: 
+            raise serializers.ValidationError("Invalid image data") 
+
+    def update(self, instance, validated_data): 
+        format, imgstr = validated_data["avatar"].split(";base64,") 
+        ext = format.split("/")[-1] 
+        filename = f"avatar_{instance.id}.{ext}" 
+        data = ContentFile(base64.b64decode(imgstr), name=filename) 
+        instance.avatar.save(filename, data, save=True) 
+        return instance
+    

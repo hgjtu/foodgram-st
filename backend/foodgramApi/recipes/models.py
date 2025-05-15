@@ -22,7 +22,7 @@ class Recipe(models.Model):
         related_name="recipes",
         verbose_name="Ингредиенты",
     )
-    cooking_time = models.PositiveSmallIntegerField(
+    cooking_time = models.PositiveIntegerField(
         "Время приготовления (в минутах)", validators=[MinValueValidator(1)]
     )
     created = models.DateTimeField("Дата публикации", auto_now_add=True)

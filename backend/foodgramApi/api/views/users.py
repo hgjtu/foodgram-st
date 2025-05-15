@@ -6,7 +6,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.core.files.storage import default_storage
-from .serializers import (
+from ..serializers.users import (
     CustomUserSerializer,
     UserAvatarSerializer,
     UserWithRecipesSerializer,
