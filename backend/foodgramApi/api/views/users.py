@@ -12,13 +12,23 @@ from ..serializers.users import (
     UserAvatarSerializer
 )
 from djoser.views import UserViewSet as DjoserUserViewSet
+from rest_framework.pagination import LimitOffsetPagination  
+from rest_framework.exceptions import NotAuthenticated
 from .recipes import RecipePagination
 
 User = get_user_model()
 
 
 class UserActionsViewSet(DjoserUserViewSet):
-    @action(detail=False, methods=['put', 'delete'], permission_classes=[IsAuthenticated])
+    pagination_class = LimitOffsetPagination  
+
+    @action(detail=False)
+    def me(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            raise NotAuthenticated()
+        return super().me(request, *args, **kwargs)
+
+    @action(detail=False, methods=['put', 'delete'], url_path='me/avatar', permission_classes=[IsAuthenticated])
     def avatar(self, request):
         user = request.user
         if request.method == "DELETE":
