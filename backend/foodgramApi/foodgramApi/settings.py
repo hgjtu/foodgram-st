@@ -168,8 +168,11 @@ AUTHENTICATION_BACKENDS = [
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'SERIALIZERS': {
-        'user': 'api.serializers.users.CustomUserSerializer',
-        'current_user': 'api.serializers.users.CustomUserSerializer',
+        'user_create': 'djoser.serializers.UserCreateSerializer',
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',
+        'user': 'api.serializers.users.FoodgramUserSerializer',
+        'current_user': 'api.serializers.users.FoodgramUserSerializer',
+        'subscription_serializer': 'api.serializers.subscriptions.SubscriptionSerializer',
     },
     'PERMISSIONS': {
         'user': ['rest_framework.permissions.IsAuthenticated'],

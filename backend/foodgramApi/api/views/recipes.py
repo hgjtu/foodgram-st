@@ -11,16 +11,19 @@ from ..serializers.recipes import (
     RecipeListSerializer,
     RecipeCreateSerializer,
     ShortRecipeSerializer,
+    RecipeGetShortLinkSerializer,
 )
 import hashlib
 from django.template.loader import render_to_string
 from weasyprint import HTML
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
+from django.urls import reverse
+from django.urls import NoReverseMatch
 
 User = get_user_model()
 
 
-class CustomPagination(PageNumberPagination):
+class RecipePagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "limit"
     max_page_size = 100
@@ -35,26 +38,26 @@ class IsAuthorOrReadOnly(BasePermission):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = CustomPagination
+    pagination_class = RecipePagination
 
     def get_serializer_class(self):
         if self.action in ['create', 'partial_update', 'update']:
             return RecipeCreateSerializer
-        # For 'favorite' and 'shopping_cart' POST, we use ShortRecipeSerializer
-        # The list and retrieve actions use RecipeListSerializer by default (can be specified too)
+
         if self.action in ['favorite', 'shopping_cart'] and self.request.method == 'POST':
             return ShortRecipeSerializer
-        return RecipeListSerializer # Default for list, retrieve
+        if self.action == 'get_link':
+            return RecipeGetShortLinkSerializer
+        return RecipeListSerializer
 
     def get_permissions(self):
         if self.action in ['create', 'favorite', 'shopping_cart', 'download_shopping_cart']:
-            # Create, favorite, shopping_cart require authentication
             self.permission_classes = [IsAuthenticated]
         elif self.action in ['partial_update', 'update', 'destroy']:
-            # Modifying/deleting a recipe requires being the author or admin
             self.permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
+        elif self.action == 'get_link':
+            self.permission_classes = [AllowAny]
         else:
-            # List, retrieve are AllowAny
             self.permission_classes = [AllowAny]
         return super().get_permissions()
 
@@ -93,49 +96,40 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def favorite(self, request, pk=None):
         recipe = self.get_object()
         user = request.user
-
-        if request.method == 'POST':
-            if user.favorites.filter(id=recipe.id).exists():
-                return Response(
-                    {"errors": "Рецепт уже в избранном."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            user.favorites.add(recipe)
-            serializer = self.get_serializer(recipe, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        # DELETE request
-        if not user.favorites.filter(id=recipe.id).exists():
-            return Response(
-                {"errors": "Рецепт не был в избранном."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        user.favorites.remove(recipe)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return self._manage_recipe_list(request, recipe, user, 'favorites', 'избранном')
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def shopping_cart(self, request, pk=None):
         recipe = self.get_object()
         user = request.user
+        return self._manage_recipe_list(request, recipe, user, 'shopping_cart', 'списке покупок')
+
+    def _manage_recipe_list(self, request, recipe, user, list_name, list_verbose_name):
+        user_list = getattr(user, list_name)
 
         if request.method == 'POST':
-            if user.shopping_cart.filter(id=recipe.id).exists(): # Assuming 'shopping_cart' is the related_name on User model
+            if user_list.filter(id=recipe.id).exists():
                 return Response(
-                    {"errors": "Рецепт уже в списке покупок."},
+                    {"errors": f"Рецепт уже в {list_verbose_name}."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            user.shopping_cart.add(recipe)
-            serializer = self.get_serializer(recipe, context={'request': request}) # Uses ShortRecipeSerializer due to get_serializer_class logic
+            user_list.add(recipe)
+            serializer = self.get_serializer(recipe, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        # DELETE request
-        if not user.shopping_cart.filter(id=recipe.id).exists():
+        try:
+            through_model_instance = get_object_or_404(
+                user_list.through,
+                user=user,
+                recipe=recipe
+            )
+            through_model_instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except user_list.through.DoesNotExist:
             return Response(
-                {"errors": "Рецепт не был в списке покупок."},
+                {"errors": f"Рецепт не был в {list_verbose_name}."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        user.shopping_cart.remove(recipe)
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
@@ -146,11 +140,29 @@ class RecipeViewSet(viewsets.ModelViewSet):
             .order_by("ingredient__name")
         )
 
-        # Ensure 'shopping_list.html' template exists and is configured
         html = render_to_string("shopping_list.html", {"ingredients": ingredients})
-        # Ensure weasyprint is installed and wkhtmltopdf (or alternative) is available if needed by weasyprint
+
         pdf_file = HTML(string=html, encoding="utf-8").write_pdf()
 
-        response = HttpResponse(pdf_file, content_type="application/pdf")
-        response["Content-Disposition"] = 'attachment; filename="shopping_list.pdf"'
+        response = FileResponse(pdf_file, as_attachment=True, filename="shopping_list.pdf", content_type="application/pdf")
         return response
+
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='get-link', url_name='get-link')
+    def get_link(self, request, pk=None):
+        recipe = self.get_object()
+        try:
+            short_hash = hex(recipe.pk)[2:]
+
+            reversed_short_link_path = reverse('api:public-recipe-detail', kwargs={'pk': short_hash})
+            short_link = request.build_absolute_uri(reversed_short_link_path)
+        except NoReverseMatch:
+            return Response({"error": "URL for short link resolver is not configured correctly. Check 'api:public-recipe-detail' URL name."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except TypeError:
+             return Response({"error": "Invalid recipe ID for hashing."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        serializer = self.get_serializer(data={"short-link": short_link})
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -8,7 +8,7 @@ from recipes.models import Recipe
 User = get_user_model()
 
 
-class CustomUserSerializer(BaseUserSerializer):
+class FoodgramUserSerializer(BaseUserSerializer):
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta(BaseUserSerializer.Meta):
@@ -30,12 +30,12 @@ class CustomUserSerializer(BaseUserSerializer):
         return False
 
 
-class UserWithRecipesSerializer(CustomUserSerializer):
+class UserWithRecipesSerializer(FoodgramUserSerializer):
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.IntegerField(source='recipes.count', read_only=True)
 
-    class Meta(CustomUserSerializer.Meta):
-        fields = CustomUserSerializer.Meta.fields + ('recipes', 'recipes_count',)
+    class Meta(FoodgramUserSerializer.Meta):
+        fields = FoodgramUserSerializer.Meta.fields + ('recipes', 'recipes_count',)
 
     def get_recipes(self, obj):
         from .recipes import ShortRecipeSerializer

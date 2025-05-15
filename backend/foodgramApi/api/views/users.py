@@ -7,18 +7,13 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.core.files.storage import default_storage
 from ..serializers.users import (
-    CustomUserSerializer,
-    UserAvatarSerializer,
     UserWithRecipesSerializer,
+    FoodgramUserSerializer,
+    UserAvatarSerializer
 )
+from .recipes import RecipePagination
 
 User = get_user_model()
-
-
-class ExtendedPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "limit"
-    max_page_size = 100
 
 
 class UserActionsViewSet(viewsets.ViewSet):
@@ -29,7 +24,7 @@ class UserActionsViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='me')
     def me(self, request):
-        serializer = CustomUserSerializer(request.user, context={'request': request})
+        serializer = FoodgramUserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['put', 'delete'], permission_classes=[IsAuthenticated], url_path='me/avatar')
@@ -56,7 +51,7 @@ class UserActionsViewSet(viewsets.ViewSet):
         user = request.user
         subscribed_to_users = User.objects.filter(subscribers=user)
 
-        paginator = ExtendedPagination()
+        paginator = RecipePagination()
         result_page = paginator.paginate_queryset(subscribed_to_users, request)
         serializer = UserWithRecipesSerializer(
             result_page, many=True, context={"request": request}

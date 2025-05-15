@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from recipes.models import Recipe, RecipeIngredient, Ingredient
-from .users import CustomUserSerializer
+from .users import FoodgramUserSerializer
 import base64
 from django.core.files.base import ContentFile
+from django.db import transaction
 
 User = get_user_model()
 
@@ -19,8 +20,8 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeListSerializer(serializers.ModelSerializer):
-    author = CustomUserSerializer(read_only=True)
-    ingredients = RecipeIngredientSerializer(source="recipe_ingredients", many=True)
+    author = FoodgramUserSerializer(read_only=True)
+    ingredients = RecipeIngredientSerializer(many=True, source='recipeingredient_set')
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -156,4 +157,11 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ("id", "name", "image", "cooking_time")
-        read_only_fields = ("id", "name", "image", "cooking_time") 
+        read_only_fields = ("id", "name", "image", "cooking_time")
+
+
+class RecipeGetShortLinkSerializer(serializers.Serializer):
+    short_link = serializers.URLField(source="short-link")
+
+    class Meta:
+        fields = ("short_link",) 
