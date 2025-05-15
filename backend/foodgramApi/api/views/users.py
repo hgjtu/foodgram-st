@@ -2,10 +2,10 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.core.files.storage import default_storage
+from ..models import Subscription
 from ..serializers.users import (
     UserWithRecipesSerializer,
     FoodgramUserSerializer,
@@ -49,46 +49,43 @@ class UserActionsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='subscriptions')
     def list_subscriptions(self, request):
         user = request.user
-        subscribed_to_users = User.objects.filter(subscribers=user)
+        subscribed_author_ids = Subscription.objects.filter(user=user).values_list('author_id', flat=True)
+        authors_user_is_subscribed_to = User.objects.filter(id__in=subscribed_author_ids)
 
         paginator = RecipePagination()
-        result_page = paginator.paginate_queryset(subscribed_to_users, request)
+        result_page = paginator.paginate_queryset(authors_user_is_subscribed_to, request)
         serializer = UserWithRecipesSerializer(
             result_page, many=True, context={"request": request}
         )
         return paginator.get_paginated_response(serializer.data)
 
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated], url_path='subscribe')
     def subscribe(self, request, pk=None):
         author_to_subscribe_to = get_object_or_404(User, id=pk)
-        user = request.user
+        current_user = request.user
+
+        if author_to_subscribe_to == current_user:
+            return Response(
+                {"errors": "Нельзя подписаться на самого себя."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if request.method == "POST":
-            if author_to_subscribe_to == user:
-                return Response(
-                    {"errors": "Нельзя подписаться на самого себя."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if author_to_subscribe_to.subscribers.filter(id=user.id).exists():
+            if Subscription.objects.filter(user=current_user, author=author_to_subscribe_to).exists():
                 return Response(
                     {"errors": f"Вы уже подписаны на пользователя {author_to_subscribe_to.username}."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            author_to_subscribe_to.subscribers.add(user)
+            Subscription.objects.create(user=current_user, author=author_to_subscribe_to)
             serializer = UserWithRecipesSerializer(author_to_subscribe_to, context={"request": request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         elif request.method == "DELETE":
-            if not author_to_subscribe_to.subscribers.filter(id=user.id).exists():
+            subscription_entry = Subscription.objects.filter(user=current_user, author=author_to_subscribe_to)
+            if not subscription_entry.exists():
                 return Response(
                     {"errors": f"Вы не были подписаны на пользователя {author_to_subscribe_to.username}."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
-            subscription_to_delete = get_object_or_404(
-                User.subscriptions.through,
-                from_user=user,
-                to_user=author_to_subscribe_to
-            )
-            subscription_to_delete.delete()
+            subscription_entry.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)

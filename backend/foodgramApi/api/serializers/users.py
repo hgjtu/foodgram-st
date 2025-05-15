@@ -4,6 +4,7 @@ from djoser.serializers import UserSerializer as BaseUserSerializer
 import base64
 from django.core.files.base import ContentFile
 from recipes.models import Recipe
+from ..models import Subscription
 
 User = get_user_model()
 
@@ -23,10 +24,10 @@ class FoodgramUserSerializer(BaseUserSerializer):
             'avatar',
         )
 
-    def get_is_subscribed(self, obj):
+    def get_is_subscribed(self, author):
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return obj.subscribers.filter(id=request.user.id).exists()
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return Subscription.objects.filter(user=request.user, author=author).exists()
         return False
 
 

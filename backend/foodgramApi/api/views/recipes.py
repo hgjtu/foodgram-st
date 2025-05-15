@@ -5,8 +5,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, SAFE_METHODS, 
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
-from django.db.models import Sum
-from recipes.models import Recipe, RecipeIngredient, User
+from django.db.models import Sum, Exists, OuterRef
+from ..models import Favorite, ShoppingCart
+from recipes.models import Recipe, RecipeIngredient
 from ..serializers.recipes import (
     RecipeListSerializer,
     RecipeCreateSerializer,
@@ -43,7 +44,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['create', 'partial_update', 'update']:
             return RecipeCreateSerializer
-
         if self.action in ['favorite', 'shopping_cart'] and self.request.method == 'POST':
             return ShortRecipeSerializer
         if self.action == 'get_link':
@@ -72,17 +72,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(author_id=author_id)
 
         if request.user.is_authenticated:
-            is_favorited = request.query_params.get("is_favorited")
-            if is_favorited == "1":
-                queryset = queryset.filter(favorited_by=request.user)
-            elif is_favorited == "0":
-                queryset = queryset.exclude(favorited_by=request.user)
+            is_favorited_param = request.query_params.get("is_favorited")
+            if is_favorited_param == "1":
+                queryset = queryset.filter(id__in=Favorite.objects.filter(user=request.user).values_list('recipe_id', flat=True))
+            elif is_favorited_param == "0":
+                queryset = queryset.exclude(id__in=Favorite.objects.filter(user=request.user).values_list('recipe_id', flat=True))
 
-            is_in_shopping_cart = request.query_params.get("is_in_shopping_cart")
-            if is_in_shopping_cart == "1":
-                queryset = queryset.filter(in_shopping_carts=request.user)
-            elif is_in_shopping_cart == "0":
-                queryset = queryset.exclude(in_shopping_carts=request.user)
+            is_in_shopping_cart_param = request.query_params.get("is_in_shopping_cart")
+            if is_in_shopping_cart_param == "1":
+                queryset = queryset.filter(id__in=ShoppingCart.objects.filter(user=request.user).values_list('recipe_id', flat=True))
+            elif is_in_shopping_cart_param == "0":
+                queryset = queryset.exclude(id__in=ShoppingCart.objects.filter(user=request.user).values_list('recipe_id', flat=True))
         
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -94,47 +94,58 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def favorite(self, request, pk=None):
-        recipe = self.get_object()
+        recipe = get_object_or_404(Recipe, pk=pk)
         user = request.user
-        return self._manage_recipe_list(request, recipe, user, 'favorites', 'избранном')
+
+        if request.method == 'POST':
+            if Favorite.objects.filter(user=user, recipe=recipe).exists():
+                return Response(
+                    {"errors": "Рецепт уже в избранном."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            Favorite.objects.create(user=user, recipe=recipe)
+            serializer = ShortRecipeSerializer(recipe, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        favorite_entry = Favorite.objects.filter(user=user, recipe=recipe)
+        if not favorite_entry.exists():
+            return Response(
+                {"errors": "Рецепт не был в избранном."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        favorite_entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def shopping_cart(self, request, pk=None):
-        recipe = self.get_object()
+        recipe = get_object_or_404(Recipe, pk=pk)
         user = request.user
-        return self._manage_recipe_list(request, recipe, user, 'shopping_cart', 'списке покупок')
-
-    def _manage_recipe_list(self, request, recipe, user, list_name, list_verbose_name):
-        user_list = getattr(user, list_name)
 
         if request.method == 'POST':
-            if user_list.filter(id=recipe.id).exists():
+            if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
                 return Response(
-                    {"errors": f"Рецепт уже в {list_verbose_name}."},
+                    {"errors": "Рецепт уже в списке покупок."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            user_list.add(recipe)
-            serializer = self.get_serializer(recipe, context={'request': request})
+            ShoppingCart.objects.create(user=user, recipe=recipe)
+            serializer = ShortRecipeSerializer(recipe, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        try:
-            through_model_instance = get_object_or_404(
-                user_list.through,
-                user=user,
-                recipe=recipe
-            )
-            through_model_instance.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except user_list.through.DoesNotExist:
+        cart_entry = ShoppingCart.objects.filter(user=user, recipe=recipe)
+        if not cart_entry.exists():
             return Response(
-                {"errors": f"Рецепт не был в {list_verbose_name}."},
+                {"errors": "Рецепт не был в списке покупок."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        cart_entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
+        recipe_ids = ShoppingCart.objects.filter(user=request.user).values_list('recipe_id', flat=True)
+        
         ingredients = (
-            RecipeIngredient.objects.filter(recipe__in_shopping_carts=request.user)
+            RecipeIngredient.objects.filter(recipe_id__in=recipe_ids)
             .values("ingredient__name", "ingredient__measurement_unit")
             .annotate(total_amount=Sum("amount"))
             .order_by("ingredient__name")

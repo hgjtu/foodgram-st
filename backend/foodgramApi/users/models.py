@@ -18,29 +18,9 @@ class User(AbstractUser):
     email = models.EmailField("Email", max_length=254, unique=True)
     first_name = models.CharField("Имя", max_length=150)
     last_name = models.CharField("Фамилия", max_length=150)
-    is_subscribed = models.BooleanField("Подписка на рассылку", default=False)
     avatar = models.ImageField(
         "Аватар", upload_to="users/",
         blank=True, null=True, default="userpic-icon.jpg"
-    )
-    shopping_cart = models.ManyToManyField(
-        "recipes.Recipe",
-        related_name="in_shopping_carts",
-        verbose_name="Список покупок",
-        blank=True,
-    )
-    favorites = models.ManyToManyField(
-        "recipes.Recipe",
-        related_name="favorited_by",
-        verbose_name="Избранное",
-        blank=True,
-    )
-    subscriptions = models.ManyToManyField(
-        "self",
-        symmetrical=False,
-        related_name="subscribers",
-        verbose_name="Подписки",
-        blank=True,
     )
 
     USERNAME_FIELD = 'email'
