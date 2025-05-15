@@ -10,3 +10,13 @@ class IngredientViewSet(ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = [AllowAny] 
+    pagination_class = None
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        name_param = self.request.query_params.get('name')
+        
+        if name_param:
+            queryset = queryset.filter(name__istartswith=name_param)
+        
+        return queryset
