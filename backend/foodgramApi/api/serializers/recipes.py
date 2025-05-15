@@ -38,22 +38,27 @@ class RecipeListSerializer(serializers.ModelSerializer):
             "cooking_time",
         )
 
-    def get_is_favorited(self, obj):
+    def get_is_favorited(self, recipe):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return obj.favorited_by.filter(id=request.user.id).exists()
+            return recipe.favorited_by.filter(id=request.user.id).exists()
         return False
 
-    def get_is_in_shopping_cart(self, obj):
+    def get_is_in_shopping_cart(self, recipe):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return obj.in_shopping_carts.filter(id=request.user.id).exists()
+            return recipe.in_shopping_carts.filter(id=request.user.id).exists()
         return False
 
 
 class IngredientInRecipeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     amount = serializers.IntegerField(min_value=1)
+
+    def validate_id(self, value):
+        if not Ingredient.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Ingredient with this ID does not exist.")
+        return value
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
@@ -64,16 +69,15 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = ("ingredients", "image", "name", "text", "cooking_time")
 
-    def validate_ingredients(self, value):
-        if not value:
-            raise serializers.ValidationError("Ingredients list cannot be empty")
+    def validate_ingredients(self, ingredients_data):
+        if not ingredients_data:
+            raise serializers.ValidationError("Ingredients list cannot be empty.")
 
-        ingredient_ids = [item["id"] for item in value]
-        existing_ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
-        if len(existing_ingredients) != len(ingredient_ids):
-            raise serializers.ValidationError("One or more ingredients do not exist")
+        ingredient_ids = [item["id"] for item in ingredients_data]
+        if len(ingredient_ids) != len(set(ingredient_ids)):
+            raise serializers.ValidationError("Ingredients must be unique within a recipe. Duplicate IDs found.")
 
-        return value
+        return ingredients_data
 
     def validate(self, data):
         if self.instance and "ingredients" not in data:
@@ -100,9 +104,8 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         ingredients_data = validated_data.pop("ingredients")
         image_data = validated_data.pop("image")
 
-        recipe = Recipe.objects.create(
-            author=self.context["request"].user, **validated_data
-        )
+        validated_data["author"] = self.context["request"].user
+        recipe = super().create(validated_data)
 
         format, imgstr = image_data.split(";base64,")
         ext = format.split("/")[-1]
@@ -110,38 +113,39 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         data = ContentFile(base64.b64decode(imgstr), name=filename)
         recipe.image.save(filename, data, save=True)
 
-        for ingredient_data in ingredients_data:
-            RecipeIngredient.objects.create(
-                recipe=recipe,
-                ingredient_id=ingredient_data["id"],
-                amount=ingredient_data["amount"],
-            )
+        self._bulk_create_recipe_ingredients(recipe, ingredients_data)
 
         return recipe
 
-    def update(self, instance, validated_data):
-        if "ingredients" in validated_data:
-            ingredients_data = validated_data.pop("ingredients")
-            instance.recipe_ingredients.all().delete()
-            for ingredient_data in ingredients_data:
-                RecipeIngredient.objects.update_or_create(
-                    recipe=instance,
+    def _bulk_create_recipe_ingredients(self, recipe, ingredients_data):
+        recipe_ingredients_to_create = []
+        for ingredient_data in ingredients_data:
+            recipe_ingredients_to_create.append(
+                RecipeIngredient(
+                    recipe=recipe,
                     ingredient_id=ingredient_data["id"],
-                    defaults={"amount": ingredient_data["amount"]},
+                    amount=ingredient_data["amount"],
                 )
+            )
+        RecipeIngredient.objects.bulk_create(recipe_ingredients_to_create)
 
-        if "image" in validated_data:
-            image_data = validated_data.pop("image")
-            format, imgstr = image_data.split(";base64,")
-            ext = format.split("/")[-1]
+    def update(self, instance, validated_data):
+        ingredients_data = validated_data.pop("ingredients", None)
+
+        if ingredients_data is not None:
+            instance.recipe_ingredients.all().delete()
+            self._bulk_create_recipe_ingredients(instance, ingredients_data)
+
+        image_base64_data = validated_data.pop("image", None)
+        instance = super().update(instance, validated_data)
+
+        if image_base64_data:
+            format_str, imgstr = image_base64_data.split(";base64,")
+            ext = format_str.split("/")[-1]
             filename = f"recipe_{instance.id}.{ext}"
-            data = ContentFile(base64.b64decode(imgstr), name=filename)
-            instance.image.save(filename, data, save=True)
+            decoded_image_data = ContentFile(base64.b64decode(imgstr), name=filename)
+            instance.image.save(filename, decoded_image_data, save=True)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
         return instance
 
     def to_representation(self, instance):
@@ -151,4 +155,5 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
-        fields = ("id", "name", "image", "cooking_time") 
+        fields = ("id", "name", "image", "cooking_time")
+        read_only_fields = ("id", "name", "image", "cooking_time") 

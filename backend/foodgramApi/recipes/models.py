@@ -1,10 +1,15 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MinLengthValidator
 
 from ingredients.models import Ingredient
 
 User = get_user_model()
+
+MIN_COOKING_TIME = 1
+MIN_INGREDIENT_AMOUNT = 1
+MIN_RECIPE_NAME_LENGTH = 1
+MIN_RECIPE_TEXT_LENGTH = 1
 
 
 # Рецепт
@@ -13,24 +18,31 @@ class Recipe(models.Model):
         User, on_delete=models.CASCADE,
         related_name="recipes", verbose_name="Автор"
     )
-    name = models.CharField("Название", max_length=200)
+    name = models.CharField(
+        "Название",
+        max_length=200,
+        validators=[MinLengthValidator(MIN_RECIPE_NAME_LENGTH)]
+    )
     image = models.ImageField("Картинка", upload_to="recipes/images/")
-    text = models.TextField("Описание")
+    text = models.TextField(
+        "Описание",
+        validators=[MinLengthValidator(MIN_RECIPE_TEXT_LENGTH)]
+    )
     ingredients = models.ManyToManyField(
         Ingredient,
         through="RecipeIngredient",
         related_name="recipes",
         verbose_name="Ингредиенты",
     )
-    cooking_time = models.PositiveIntegerField(
-        "Время приготовления (в минутах)", validators=[MinValueValidator(1)]
+    cooking_time = models.PositiveSmallIntegerField(
+        "Время приготовления (в минутах)", validators=[MinValueValidator(MIN_COOKING_TIME)]
     )
     created = models.DateTimeField("Дата публикации", auto_now_add=True)
 
     class Meta:
         verbose_name = "Рецепт"
         verbose_name_plural = "Рецепты"
-        ordering = ["-created"]
+        ordering = ("-created",)
 
     def __str__(self):
         return self.name
@@ -51,12 +63,12 @@ class RecipeIngredient(models.Model):
         verbose_name="Ингредиент",
     )
     amount = models.PositiveSmallIntegerField(
-        "Количество", validators=[MinValueValidator(1)]
+        "Количество", validators=[MinValueValidator(MIN_INGREDIENT_AMOUNT)]
     )
 
     class Meta:
-        verbose_name = "Ингредиент рецепта"
-        verbose_name_plural = "Ингредиенты рецепта"
+        verbose_name = "Продукт рецепта"
+        verbose_name_plural = "Продукты рецепта"
         constraints = [
             models.UniqueConstraint(
                 fields=["recipe", "ingredient"],
