@@ -153,6 +153,18 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return RecipeListSerializer(instance, context=self.context).data
 
 
+class RecipeUpdateSerializer(RecipeCreateSerializer):
+    image = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+    class Meta(RecipeCreateSerializer.Meta):
+        pass
+
+    def validate_image(self, value):
+        if not value: # Handles None, empty string
+            return None # Allow clearing the image or not providing it
+        return super().validate_image(value)
+
+
 class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe

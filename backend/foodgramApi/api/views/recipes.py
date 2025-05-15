@@ -11,6 +11,7 @@ from recipes.models import Recipe, RecipeIngredient
 from ..serializers.recipes import (
     RecipeListSerializer,
     RecipeCreateSerializer,
+    RecipeUpdateSerializer,
     ShortRecipeSerializer,
     RecipeGetShortLinkSerializer,
 )
@@ -42,8 +43,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
     pagination_class = RecipePagination
 
     def get_serializer_class(self):
-        if self.action in ['create', 'partial_update', 'update']:
+        if self.action == 'create':
             return RecipeCreateSerializer
+        if self.action in ['partial_update', 'update']:
+            return RecipeUpdateSerializer
         if self.action in ['favorite', 'shopping_cart'] and self.request.method == 'POST':
             return ShortRecipeSerializer
         if self.action == 'get_link':

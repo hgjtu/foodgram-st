@@ -81,7 +81,6 @@ class ExtendedUserAdmin(UserAdmin):
     list_filter = (
         "is_staff",
         "is_active",
-        "is_subscribed",
         UserHasRecipesFilter,
         UserHasSubscriptionsFilter,
         UserHasSubscribersFilter,
@@ -94,7 +93,7 @@ class ExtendedUserAdmin(UserAdmin):
         (
             "Permissions",
             {"fields": ("is_active", "is_staff",
-                        "is_superuser", "is_subscribed")},
+                        "is_superuser")},
         ),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
         (

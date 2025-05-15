@@ -11,23 +11,14 @@ from ..serializers.users import (
     FoodgramUserSerializer,
     UserAvatarSerializer
 )
+from djoser.views import UserViewSet as DjoserUserViewSet
 from .recipes import RecipePagination
 
 User = get_user_model()
 
 
-class UserActionsViewSet(viewsets.ViewSet):
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return User.objects.all()
-
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='me')
-    def me(self, request):
-        serializer = FoodgramUserSerializer(request.user, context={'request': request})
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['put', 'delete'], permission_classes=[IsAuthenticated], url_path='me/avatar')
+class UserActionsViewSet(DjoserUserViewSet):
+    @action(detail=False, methods=['put', 'delete'], permission_classes=[IsAuthenticated])
     def avatar(self, request):
         user = request.user
         if request.method == "DELETE":
@@ -46,8 +37,8 @@ class UserActionsViewSet(viewsets.ViewSet):
         avatar_url = request.build_absolute_uri(updated_user.avatar.url) if updated_user.avatar else None
         return Response({'avatar': avatar_url})
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='subscriptions')
-    def list_subscriptions(self, request):
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def subscriptions(self, request):
         user = request.user
         subscribed_author_ids = Subscription.objects.filter(user=user).values_list('author_id', flat=True)
         authors_user_is_subscribed_to = User.objects.filter(id__in=subscribed_author_ids)
@@ -59,9 +50,9 @@ class UserActionsViewSet(viewsets.ViewSet):
         )
         return paginator.get_paginated_response(serializer.data)
 
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated], url_path='subscribe')
-    def subscribe(self, request, pk=None):
-        author_to_subscribe_to = get_object_or_404(User, id=pk)
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def subscribe(self, request, id=None):
+        author_to_subscribe_to = get_object_or_404(User, id=id)
         current_user = request.user
 
         if author_to_subscribe_to == current_user:
