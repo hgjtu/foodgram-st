@@ -5,6 +5,7 @@ from .users import FoodgramUserSerializer
 import base64
 from django.core.files.base import ContentFile
 from django.db import transaction
+from ..models import Favorite, ShoppingCart
 
 User = get_user_model()
 
@@ -21,7 +22,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 class RecipeListSerializer(serializers.ModelSerializer):
     author = FoodgramUserSerializer(read_only=True)
-    ingredients = RecipeIngredientSerializer(many=True, source='recipeingredient_set')
+    ingredients = RecipeIngredientSerializer(many=True, source='recipe_ingredients.all')
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -151,18 +152,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return RecipeListSerializer(instance, context=self.context).data
-
-
-class RecipeUpdateSerializer(RecipeCreateSerializer):
-    image = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-
-    class Meta(RecipeCreateSerializer.Meta):
-        pass
-
-    def validate_image(self, value):
-        if not value: # Handles None, empty string
-            return None # Allow clearing the image or not providing it
-        return super().validate_image(value)
 
 
 class ShortRecipeSerializer(serializers.ModelSerializer):

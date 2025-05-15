@@ -11,14 +11,13 @@ from recipes.models import Recipe, RecipeIngredient
 from ..serializers.recipes import (
     RecipeListSerializer,
     RecipeCreateSerializer,
-    RecipeUpdateSerializer,
     ShortRecipeSerializer,
     RecipeGetShortLinkSerializer,
 )
 import hashlib
 from django.template.loader import render_to_string
 from weasyprint import HTML
-from django.http import HttpResponse, FileResponse
+from django.http import Http404, HttpResponse, FileResponse
 from django.urls import reverse
 from django.urls import NoReverseMatch
 
@@ -43,10 +42,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     pagination_class = RecipePagination
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action in ['create', 'partial_update', 'update']:
             return RecipeCreateSerializer
-        if self.action in ['partial_update', 'update']:
-            return RecipeUpdateSerializer
         if self.action in ['favorite', 'shopping_cart'] and self.request.method == 'POST':
             return ShortRecipeSerializer
         if self.action == 'get_link':
@@ -163,20 +160,21 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='get-link', url_name='get-link')
     def get_link(self, request, pk=None):
-        recipe = self.get_object()
         try:
+            recipe = self.get_object()
             short_hash = hex(recipe.pk)[2:]
+            reversed_path = reverse('api:public-recipe-detail', kwargs={'pk': short_hash})
+            short_link = request.build_absolute_uri(reversed_path)
 
-            reversed_short_link_path = reverse('api:public-recipe-detail', kwargs={'pk': short_hash})
-            short_link = request.build_absolute_uri(reversed_short_link_path)
-        except NoReverseMatch:
-            return Response({"error": "URL for short link resolver is not configured correctly. Check 'api:public-recipe-detail' URL name."},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except TypeError:
-             return Response({"error": "Invalid recipe ID for hashing."},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        serializer = self.get_serializer(data={"short-link": short_link})
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"short-link": short_link},
+                status=status.HTTP_200_OK
+            )
+            
+        except Http404:
+            raise
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
