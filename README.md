@@ -26,6 +26,7 @@ docker-compose -f docker-compose.prod.yml up --build
 ```
 локально
 создать пустую бд foodgram
+localhost
 
 импортировать ингредиенты
 python manage.py load_ingredients ../data/ingredients.json

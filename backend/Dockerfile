@@ -38,13 +38,15 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY foodgramApi/ /app/
 COPY data/ /app/data/
-COPY backups/ /app/backups/
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
+
+RUN mkdir -p /app/static && \
+    chown -R appuser:appuser /app/static
 
 EXPOSE 8000
 
