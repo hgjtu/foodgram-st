@@ -25,6 +25,7 @@ oscrypto==1.3.0
 packaging==25.0
 pillow==10.2.0
 psycopg2-binary==2.9.9
+pycairo==1.28.0
 pycparser==2.22
 pydyf==0.11.0
 pyHanko==0.26.0
@@ -37,6 +38,7 @@ PyYAML==6.0.2
 qrcode==8.2
 reportlab==4.0.9
 requests==2.32.3
+rlPyCairo==0.3.0
 six==1.17.0
 sqlparse==0.5.3
 svglib==1.5.1
