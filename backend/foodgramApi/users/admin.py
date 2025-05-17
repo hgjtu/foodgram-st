@@ -53,9 +53,6 @@ class UserHasSubscribersFilter(admin.SimpleListFilter):
         )
 
     def queryset(self, request, queryset):
-        # Assuming 'subscribers' is the related_name from the model that subscribes to User
-        # For example, if a Subscription model has a ForeignKey 'subscribed_to' to User,
-        # and User has a related_name 'subscribers'
         if self.value() == "yes":
             return queryset.filter(subscribers__isnull=False).distinct()
         if self.value() == "no":
@@ -98,7 +95,7 @@ class ExtendedUserAdmin(UserAdmin):
         ("Important dates", {"fields": ("last_login", "date_joined")}),
         (
             "Additional info",
-            {"fields": ("shopping_cart", "favorites", "subscriptions")},
+            {"fields": ("shopping_cart", "favorites")},
         ),
     )
     add_fieldsets = (
@@ -112,24 +109,24 @@ class ExtendedUserAdmin(UserAdmin):
     )
 
     @admin.display(description="ФИО")
-    def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}"
+    def get_full_name(self, user):
+        return f"{user.first_name} {user.last_name}"
 
     @admin.display(description="Аватар")
     @mark_safe
-    def get_avatar_preview(self, obj):
-        if obj.avatar:
-            return format_html('<img src="{}" width="50" height="50" />', obj.avatar.url)
+    def get_avatar_preview(self, user):
+        if user.avatar:
+            return format_html('<img src="{}" width="50" height="50" />', user.avatar.url)
         return "Нет аватара"
 
     @admin.display(description="Рецептов")
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
+    def get_recipes_count(self, user):
+        return user.recipes.count()
 
     @admin.display(description="Подписок")
-    def get_subscriptions_count(self, obj):
-        return obj.subscriptions.count()
+    def get_subscriptions_count(self, user):
+        return user.following.count()
 
     @admin.display(description="Подписчиков")
-    def get_subscribers_count(self, obj):
-        return obj.subscribers.count()
+    def get_subscribers_count(self, user):
+        return user.followers.count()

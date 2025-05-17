@@ -29,13 +29,13 @@ class RecipeAdmin(admin.ModelAdmin):
 
     @admin.display(description="Добавлений в избранное")
     def favorite_count(self, recipe):
-        return recipe.favorited_by.count()
+        return recipe.favorited_by_users_relations.count()
 
     @admin.display(description="Продукты")
     def ingredients_display(self, recipe):
-        ingredients = recipe.recipeingredient_set.all()
+        ingredients = recipe.recipe_ingredients.all()
         if not ingredients.exists():
-            return "Нет ингредиентов"
+            return "Нет продуктов"
         
         html_parts = []
         for item in ingredients:
