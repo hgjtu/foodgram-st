@@ -1,3 +1,4 @@
+from io import BytesIO
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
@@ -152,8 +153,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
         html = render_to_string("shopping_list.html", {"ingredients": ingredients})
+        print(html)
 
-        pdf_file = HTML(string=html, encoding="utf-8").write_pdf()
+        pdf_file = BytesIO(HTML(string=html, encoding="utf-8").write_pdf())
 
         response = FileResponse(pdf_file, as_attachment=True, filename="shopping_list.pdf", content_type="application/pdf")
         return response

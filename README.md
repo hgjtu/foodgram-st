@@ -47,27 +47,42 @@ docker-compose -f docker-compose.prod.yml down
 cd backend/foodgramApi
 ```
 
-4. Применить миграции
+4. Создать venv
+```bash
+python3 -m venv venv
+```
+
+5. Запустить vevn
+```bash
+.\venv\Scripts\activate
+```
+
+6. Установитьзависимости
+```bash
+pip install -r requirements.txt
+```
+
+7. Применить миграции
 ```bash
 python manage.py migrate
 ```
 
-5. Создать суперюзера
+8. Создать суперюзера
 ```bash
 python manage.py createsuperuser
 ```
 
-6. Импортировать ингредиенты:
+9. Импортировать ингредиенты:
 ```bash
 python manage.py load_ingredients ../data/ingredients.json
 ```
 
-7. Собрать статику
+10. Собрать статику
 ```bash
 python manage.py collectstatic --noinput
 ```
 
-8. Запустить приложение
+11. Запустить приложение
 ```bash
 python manage.py runserver
 ```

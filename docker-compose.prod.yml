@@ -18,7 +18,8 @@ services:
       retries: 5
 
   backend:
-    image: hgjtu/foodgram-backend:latest
+    build: backend
+    # image: hgjtu/foodgram-backend:latest
     volumes:
       - static_volume:/app/static
       - media_volume:/app/media
