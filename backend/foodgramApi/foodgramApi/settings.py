@@ -21,18 +21,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env_path = Path(__file__).resolve().parent.parent.parent.parent / '.env'
 config = dotenv_values(env_path)
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config.get("SECRET_KEY", "your_django_secret_key_here"),
+SECRET_KEY = config.get("SECRET_KEY", "your_django_secret_key_here")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False  # config.get("DEBUG", "False"),
+DEBUG = config.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
-
+ALLOWED_HOSTS = [host.strip() for host in config.get("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0").split(',') if host.strip()]
 
 # Application definition
 
@@ -141,10 +139,6 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-# STATIC_URL = 'static/'
-# STATICFILES_DIRS = (os.path.join(BASE_DIR, 'static'),)
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "static")

@@ -22,19 +22,18 @@ services:
     # image: hgjtu/foodgram-backend:latest
     volumes:
       - static_volume:/app/static
-      # - staticfiles:/app/staticfiles
       - media_volume:/app/media
       - ./data:/app/data
     expose:
       - 8000
     environment:
       - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
+      - DB_USER=${DB_USER}  
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
-      - DEBUG=False
+      - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     depends_on:

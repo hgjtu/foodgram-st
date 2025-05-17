@@ -4,12 +4,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=foodgramApi.settings
 
-ENV DB_NAME=foodgram \
-    DB_USER=postgres \
-    DB_PASSWORD=postgres \
-    DB_HOST=db \
-    DB_PORT=5432
-
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
