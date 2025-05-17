@@ -20,8 +20,7 @@ Foodgram - это сервис для публикации рецептов. П�
 
 2. Создайте файл .env (пример .env.example) (POSTGRES_HOST=db, DEBUG=False)
 
-3. Запустите проект:\
-Для запуска в контейнерах (в .env ):
+3. Запустите проект:
 ```bash
 docker-compose -f docker-compose.prod.yml up --build
 ```
@@ -53,11 +52,17 @@ python3 -m venv venv
 ```
 
 5. Запустить vevn
+
+Windows:
 ```bash
 .\venv\Scripts\activate
 ```
+Linux:
+```bash
+source venv/bin/activate
+```
 
-6. Установитьзависимости
+6. Установить зависимости
 ```bash
 pip install -r requirements.txt
 ```
@@ -89,6 +94,7 @@ python manage.py runserver
 
 После запуска будут доступны ссылки:
 - [API](http://localhost:8000/api/)
+- [Административная панель](http://localhost:8000/admin/)
 
 
 ## Автор
