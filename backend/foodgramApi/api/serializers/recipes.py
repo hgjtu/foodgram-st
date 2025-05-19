@@ -39,12 +39,16 @@ class RecipeListSerializer(serializers.ModelSerializer):
             "text",
             "cooking_time",
         )
-
+        read_only_fields = fields
+        
     def get_is_favorited(self, recipe):
-        request = self.context.get("request")
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return Favorite.objects.filter(user=request.user, recipe=recipe).exists()
-        return False
+        request = self.context.get("request") 
+        return bool(
+            request
+            and hasattr(request, 'user')
+            and request.user.is_authenticated
+            and Favorite.objects.filter(user=request.user, recipe=recipe).exists()
+        )
 
     def get_is_in_shopping_cart(self, recipe):
         request = self.context.get("request")
@@ -54,18 +58,14 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
 
 class IngredientInRecipeSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
     amount = serializers.IntegerField(min_value=1)
-
-    def validate_id(self, value):
-        if not Ingredient.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Ingredient with this ID does not exist.")
-        return value
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     ingredients = IngredientInRecipeSerializer(many=True, required=True)
     image = serializers.CharField(required=True)
+    cooking_time = serializers.IntegerField(min_value=1)
 
     class Meta:
         model = Recipe
@@ -120,15 +120,14 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return recipe
 
     def _bulk_create_recipe_ingredients(self, recipe, ingredients_data):
-        recipe_ingredients_to_create = []
-        for ingredient_data in ingredients_data:
-            recipe_ingredients_to_create.append(
-                RecipeIngredient(
-                    recipe=recipe,
-                    ingredient_id=ingredient_data["id"],
-                    amount=ingredient_data["amount"],
-                )
+        recipe_ingredients_to_create = [
+            RecipeIngredient(
+                recipe=recipe,
+                ingredient_id=ingredient_data["id"],
+                amount=ingredient_data["amount"],
             )
+            for ingredient_data in ingredients_data
+        ]
         RecipeIngredient.objects.bulk_create(recipe_ingredients_to_create)
 
     def update(self, instance, validated_data):
@@ -139,7 +138,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             self._bulk_create_recipe_ingredients(instance, ingredients_data)
 
         image_base64_data = validated_data.pop("image", None)
-        instance = super().update(instance, validated_data)
 
         if image_base64_data:
             format_str, imgstr = image_base64_data.split(";base64,")
@@ -148,7 +146,8 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             decoded_image_data = ContentFile(base64.b64decode(imgstr), name=filename)
             instance.image.save(filename, decoded_image_data, save=True)
 
-        return instance
+        return super().update(instance, validated_data)
+
 
     def to_representation(self, instance):
         return RecipeListSerializer(instance, context=self.context).data
@@ -158,11 +157,4 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ("id", "name", "image", "cooking_time")
-        read_only_fields = ("id", "name", "image", "cooking_time")
-
-
-class RecipeGetShortLinkSerializer(serializers.Serializer):
-    short_link = serializers.URLField(source="short-link")
-
-    class Meta:
-        fields = ("short_link",) 
+        read_only_fields = fields

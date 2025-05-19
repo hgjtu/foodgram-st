@@ -12,8 +12,7 @@ from recipes.models import Recipe, RecipeIngredient
 from ..serializers.recipes import (
     RecipeListSerializer,
     RecipeCreateSerializer,
-    ShortRecipeSerializer,
-    RecipeGetShortLinkSerializer,
+    ShortRecipeSerializer
 )
 import hashlib
 from django.template.loader import render_to_string
@@ -47,8 +46,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return RecipeCreateSerializer
         if self.action in ['favorite', 'shopping_cart'] and self.request.method == 'POST':
             return ShortRecipeSerializer
-        if self.action == 'get_link':
-            return RecipeGetShortLinkSerializer
+        # if self.action == 'get_link':
+        #     return RecipeGetShortLinkSerializer
         return RecipeListSerializer
 
     def get_permissions(self):

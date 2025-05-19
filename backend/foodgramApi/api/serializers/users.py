@@ -5,6 +5,7 @@ import base64
 from django.core.files.base import ContentFile
 from recipes.models import Recipe
 from ..models import Subscription
+from .recipes import ShortRecipeSerializer
 
 User = get_user_model()
 
@@ -23,12 +24,16 @@ class FoodgramUserSerializer(BaseUserSerializer):
             'is_subscribed',
             'avatar',
         )
+        read_only_fields = fields
 
     def get_is_subscribed(self, author):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return Subscription.objects.filter(user=request.user, author=author).exists()
-        return False
+        request = self.context.get('request') 
+        return bool(
+            request
+            and hasattr(request, 'user')
+            and request.user.is_authenticated
+            and Subscription.objects.filter(user=request.user, author=author).exists()
+        )
 
 
 class UserWithRecipesSerializer(FoodgramUserSerializer):
@@ -39,18 +44,17 @@ class UserWithRecipesSerializer(FoodgramUserSerializer):
         fields = FoodgramUserSerializer.Meta.fields + ('recipes', 'recipes_count',)
 
     def get_recipes(self, obj):
-        from .recipes import ShortRecipeSerializer
         request = self.context.get('request')
         recipes_limit = request.query_params.get('recipes_limit')
         if recipes_limit:
             try:
                 recipes_limit = int(recipes_limit)
             except (TypeError, ValueError):
-                recipes_limit = 3
+                recipes_limit = 10**10
         else:
-            recipes_limit = 3
+            recipes_limit = 10**10
 
-        recipes = Recipe.objects.filter(author=obj)[:recipes_limit]
+        recipes = obj.recipes.all()[:recipes_limit]
         return ShortRecipeSerializer(recipes, many=True, context={'request': request}).data 
     
 class UserAvatarSerializer(serializers.ModelSerializer): 
