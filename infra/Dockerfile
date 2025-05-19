@@ -8,8 +8,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Создаем директории для статических файлов
 RUN mkdir -p /usr/share/nginx/html/static/ \
-    && mkdir -p /usr/share/nginx/html/media/ \
-    && mkdir -p /usr/share/nginx/html/api/docs/
+    && mkdir -p /usr/share/nginx/html/media/
 
 # Устанавливаем права
 RUN chown -R nginx:nginx /usr/share/nginx/html/ \

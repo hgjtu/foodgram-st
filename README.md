@@ -18,14 +18,19 @@ Foodgram - это сервис для публикации рецептов. П�
 
 1. Убедитесь, что у вас установлен Docker и Docker Compose.
 
-2. Создайте файл .env (пример .env.example) (POSTGRES_HOST=db, DEBUG=False)
+2. Склонируйте репозиторий
+```bash
+git clone https://github.com/hgjtu/foodgram-st.git
+```
 
-3. Запустите проект:
+3. Создайте файл .env (пример .env.example) (POSTGRES_HOST=db, DEBUG=False)
+
+4. Запустите проект:
 ```bash
 docker-compose -f docker-compose.prod.yml up --build
 ```
 
-4. Для окончания работы:
+5. Для окончания работы:
 ```bash
 docker-compose -f docker-compose.prod.yml down
 ```
@@ -37,9 +42,12 @@ docker-compose -f docker-compose.prod.yml down
 
 ### Локальное развертывание без Докера
 
-1. Создайте файл .env (пример .env.example) (POSTGRES_HOST=localhost, DEBUG=True)
+1. Склонируйте репозиторий
+```bash
+git clone https://github.com/hgjtu/foodgram-st.git
+```
 
-2. Cоздайте пустую базу данных PostgreSQL и внесите ее данные в .env
+2. Создайте файл .env (пример .env.example) (POSTGRES_HOST=localhost, DEBUG=True)
 
 3. Перейти в backend/foodgramApi
 ```bash
@@ -99,5 +107,4 @@ python manage.py runserver
 
 ## Автор
 Калинина Марина Павловна, студент МИРЭА, группа ИКБО-02-22\
-Почта для связи: kalinina.m.p@edu.mirea.ru
-
+[Почта для связи](kalinina.m.p@edu.mirea.ru)
