@@ -8,26 +8,23 @@ User = get_user_model()
 
 MIN_COOKING_TIME = 1
 MIN_INGREDIENT_AMOUNT = 1
-MIN_RECIPE_NAME_LENGTH = 1
-MIN_RECIPE_TEXT_LENGTH = 1
 
 
 # Рецепт
 class Recipe(models.Model):
     author = models.ForeignKey(
         User, on_delete=models.CASCADE,
-        related_name="recipes", verbose_name="Автор"
+        related_name="recipes",
+        verbose_name="Автор"
     )
     name = models.CharField(
         "Название",
-        max_length=200,
-        validators=[MinLengthValidator(MIN_RECIPE_NAME_LENGTH)]
-    )
+        max_length=256
+        )
     image = models.ImageField("Картинка", upload_to="recipes/images/")
     text = models.TextField(
-        "Описание",
-        validators=[MinLengthValidator(MIN_RECIPE_TEXT_LENGTH)]
-    )
+        "Описание"
+        )
     ingredients = models.ManyToManyField(
         Ingredient,
         through="RecipeIngredient",

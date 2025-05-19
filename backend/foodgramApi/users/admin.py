@@ -6,58 +6,40 @@ from django.utils.translation import gettext_lazy as _
 from .models import User
 
 
-class UserHasRecipesFilter(admin.SimpleListFilter):
+class BaseHasRelationFilter(admin.SimpleListFilter):
+    LOOKUP_CHOICES = (
+        ("yes", _("Да")),
+        ("no", _("Нет")),
+    )
+    relation_field = None  # Должно быть переопределено в подклассах
+
+    def lookups(self, request, model_admin):
+        return self.LOOKUP_CHOICES
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(**{f"{self.relation_field}__isnull": False}).distinct()
+        if self.value() == "no":
+            return queryset.filter(**{f"{self.relation_field}__isnull": True}).distinct()
+        return queryset
+    
+
+class UserHasRecipesFilter(BaseHasRelationFilter):
     title = _("есть рецепты")
     parameter_name = "has_recipes"
-
-    def lookups(self, request, model_admin):
-        return (
-            ("yes", _("Да")),
-            ("no", _("Нет")),
-        )
-
-    def queryset(self, request, queryset):
-        if self.value() == "yes":
-            return queryset.filter(recipes__isnull=False).distinct()
-        if self.value() == "no":
-            return queryset.filter(recipes__isnull=True).distinct()
-        return queryset
+    relation_field = "recipes"
 
 
-class UserHasSubscriptionsFilter(admin.SimpleListFilter):
+class UserHasSubscriptionsFilter(BaseHasRelationFilter):
     title = _("есть подписки")
     parameter_name = "has_subscriptions"
-
-    def lookups(self, request, model_admin):
-        return (
-            ("yes", _("Да")),
-            ("no", _("Нет")),
-        )
-
-    def queryset(self, request, queryset):
-        if self.value() == "yes":
-            return queryset.filter(subscriptions__isnull=False).distinct()
-        if self.value() == "no":
-            return queryset.filter(subscriptions__isnull=True).distinct()
-        return queryset
+    relation_field = "subscriptions"
 
 
-class UserHasSubscribersFilter(admin.SimpleListFilter):
+class UserHasSubscribersFilter(BaseHasRelationFilter):
     title = _("есть подписчики")
     parameter_name = "has_subscribers"
-
-    def lookups(self, request, model_admin):
-        return (
-            ("yes", _("Да")),
-            ("no", _("Нет")),
-        )
-
-    def queryset(self, request, queryset):
-        if self.value() == "yes":
-            return queryset.filter(subscribers__isnull=False).distinct()
-        if self.value() == "no":
-            return queryset.filter(subscribers__isnull=True).distinct()
-        return queryset
+    relation_field = "subscribers"
 
 
 @admin.register(User)
@@ -113,10 +95,9 @@ class ExtendedUserAdmin(UserAdmin):
         return f"{user.first_name} {user.last_name}"
 
     @admin.display(description="Аватар")
-    @mark_safe
     def get_avatar_preview(self, user):
         if user.avatar:
-            return format_html('<img src="{}" width="50" height="50" />', user.avatar.url)
+            return mark_safe(f'<img src="{user.avatar.url}" width="50" height="50" />')
         return "Нет аватара"
 
     @admin.display(description="Рецептов")

@@ -27,7 +27,7 @@ class RecipeAdmin(admin.ModelAdmin):
         ("Статистика", {"fields": ("favorite_count",)}),
     )
 
-    @admin.display(description="Добавлений в избранное")
+    @admin.display(description="В избранном")
     def favorite_count(self, recipe):
         return recipe.favorited_by_users_relations.count()
 
@@ -37,12 +37,8 @@ class RecipeAdmin(admin.ModelAdmin):
         if not ingredients.exists():
             return "Нет продуктов"
         
-        html_parts = []
-        for item in ingredients:
-            html_parts.append(f"<li>{item.ingredient.name}: {item.amount}</li>")
-        
-        html_ul = f"<ul>{''.join(html_parts)}</ul>"
-        return mark_safe(html_ul)
+        html_content = "<br>".join(f"{item.ingredient.name}: {item.amount}" for item in ingredients)
+        return mark_safe(html_content)
 
     @admin.display(description="Картинка")
     def image_display(self, recipe):

@@ -103,6 +103,7 @@ python manage.py runserver
 После запуска будут доступны ссылки:
 - [API](http://localhost:8000/api/)
 - [Административная панель](http://localhost:8000/admin/)
+- [Документация](http://localhost:8000/api/docs)
 
 
 ## Автор

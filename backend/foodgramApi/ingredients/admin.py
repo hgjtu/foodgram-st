@@ -9,7 +9,6 @@ class IngredientAdmin(admin.ModelAdmin):
     list_filter = ("measurement_unit", )
     ordering = ("name",)
 
+    @admin.display(description="Число рецептов")
     def recipe_count(self, ingredient):
         return ingredient.recipes.count()
-
-    recipe_count.short_description = "Число рецептов"
