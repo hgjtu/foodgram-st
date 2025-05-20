@@ -58,9 +58,9 @@ class UserActionsViewSet(DjoserUserViewSet):
         )
         return paginator.get_paginated_response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def subscribe(self, request, id=None):
-        author_to_subscribe_to = get_object_or_404(User, id=id)
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated], url_path='subscribe', url_name='subscribe-post')
+    def subscribe(self, request, pk=None):
+        author_to_subscribe_to = get_object_or_404(User, pk=pk)
         current_user = request.user
 
         if author_to_subscribe_to == current_user:
@@ -82,9 +82,9 @@ class UserActionsViewSet(DjoserUserViewSet):
         serializer = UserWithRecipesSerializer(author_to_subscribe_to, context={"request": request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
-    def subscribe(self, request, id=None):
-        author_to_unsubscribe_from = get_object_or_404(User, id=id)
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated], url_path='subscribe',  url_name='subscribe-delete')
+    def unsubscribe(self, request, pk=None):
+        author_to_unsubscribe_from = get_object_or_404(User, pk=pk)
         current_user = request.user
 
         if author_to_unsubscribe_from == current_user:
