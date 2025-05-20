@@ -5,7 +5,7 @@ import base64
 from django.core.files.base import ContentFile
 from recipes.models import Recipe
 from ..models import Subscription
-from .recipes import ShortRecipeSerializer
+
 
 User = get_user_model()
 
@@ -44,6 +44,7 @@ class UserWithRecipesSerializer(FoodgramUserSerializer):
         fields = FoodgramUserSerializer.Meta.fields + ('recipes', 'recipes_count',)
 
     def get_recipes(self, obj):
+        from .recipes import ShortRecipeSerializer
         request = self.context.get('request')
         recipes_limit = request.query_params.get('recipes_limit')
         if recipes_limit:

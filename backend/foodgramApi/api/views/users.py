@@ -22,10 +22,8 @@ User = get_user_model()
 class UserActionsViewSet(DjoserUserViewSet):
     pagination_class = LimitOffsetPagination  
 
-    @action(detail=False)
+    @action(detail=False, permission_classes=[IsAuthenticated])
     def me(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            raise NotAuthenticated()
         return super().me(request, *args, **kwargs)
 
     @action(detail=False, methods=['put', 'delete'], url_path='me/avatar', permission_classes=[IsAuthenticated])
@@ -60,7 +58,7 @@ class UserActionsViewSet(DjoserUserViewSet):
         )
         return paginator.get_paginated_response(serializer.data)
 
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def subscribe(self, request, id=None):
         author_to_subscribe_to = get_object_or_404(User, id=id)
         current_user = request.user
@@ -71,22 +69,35 @@ class UserActionsViewSet(DjoserUserViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if request.method == "POST":
-            if Subscription.objects.filter(user=current_user, author=author_to_subscribe_to).exists():
-                return Response(
-                    {"errors": f"Вы уже подписаны на пользователя {author_to_subscribe_to.username}."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            Subscription.objects.create(user=current_user, author=author_to_subscribe_to)
-            serializer = UserWithRecipesSerializer(author_to_subscribe_to, context={"request": request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        subscription, created = Subscription.objects.get_or_create(
+            user=current_user,
+            author=author_to_subscribe_to
+        )
+        if not created:
+            return Response(
+                {"errors": f"Вы уже подписаны на пользователя {author_to_subscribe_to.username}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        serializer = UserWithRecipesSerializer(author_to_subscribe_to, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def subscribe(self, request, id=None):
+        author_to_unsubscribe_from = get_object_or_404(User, id=id)
+        current_user = request.user
 
-        elif request.method == "DELETE":
-            subscription_entry = Subscription.objects.filter(user=current_user, author=author_to_subscribe_to)
-            if not subscription_entry.exists():
-                return Response(
-                    {"errors": f"Вы не были подписаны на пользователя {author_to_subscribe_to.username}."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            subscription_entry.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+        if author_to_unsubscribe_from == current_user:
+            return Response(
+                {"errors": "Нельзя отписаться от самого себя."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        subscription_entry = get_object_or_404(
+            Subscription,
+            user=current_user,
+            author=author_to_unsubscribe_from
+        )
+        subscription_entry.delete()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
