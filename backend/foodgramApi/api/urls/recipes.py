@@ -9,4 +9,5 @@ router.register(r'recipes', RecipeViewSet, basename='recipe')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('s/<str:hash>/', RecipeViewSet.as_view({'get': 'short_link'}), name='short-link'),
 ] 

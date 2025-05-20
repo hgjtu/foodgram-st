@@ -25,28 +25,39 @@ import django_filters
 User = get_user_model()
 
 class RecipeFilter(django_filters.FilterSet):
-    is_favorited = django_filters.BooleanFilter(method='filter_is_favorited')
-    is_in_shopping_cart = django_filters.BooleanFilter(method='filter_is_in_shopping_cart')
+    is_favorited = django_filters.CharFilter(method='filter_is_favorited')
+    is_in_shopping_cart = django_filters.CharFilter(method='filter_is_in_shopping_cart')
 
     class Meta:
         model = Recipe
         fields = ['author', 'is_favorited', 'is_in_shopping_cart']
 
     def filter_is_favorited(self, queryset, name, value):
-        user = self.request.user
-        if user.is_anonymous:
-            return queryset.none() if value else queryset
-        if value:
-            return queryset.filter(favorite__user=user)
-        return queryset.exclude(favorite__user=user)
+        return self._filter_by_user_relation(
+            queryset,
+            relation='favorited_by_users_relations__user',
+            value=value
+        )
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
+        return self._filter_by_user_relation(
+            queryset,
+            relation='in_shopping_carts_of_users__user',
+            value=value
+        )
+
+    def _filter_by_user_relation(self, queryset, relation, value):
         user = self.request.user
-        if user.is_anonymous:
-            return queryset.none() if value else queryset
-        if value:
-            return queryset.filter(shoppingcart__user=user)
-        return queryset.exclude(shoppingcart__user=user)
+        if not value or user.is_anonymous:
+            return queryset
+
+        true_values = {'1', 'true'}
+        is_true = str(value).lower() in true_values
+
+        if is_true:
+            return queryset.filter(**{relation: user})
+        return queryset.exclude(**{relation: user})
+
 
 class RecipePagination(PageNumberPagination):
     page_size = 6
@@ -140,8 +151,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='get-link', url_name='get-link')
     def get_link(self, request, pk=None):
-        reversed_path = reverse('api:public-recipe-detail', kwargs={'pk': pk})
-        short_link = request.build_absolute_uri(reversed_path)
+        recipe = self.get_object()
+
+        short_link = request.build_absolute_uri(f'/api/s/{pk}')
 
         return Response(
             {"short-link": short_link},
